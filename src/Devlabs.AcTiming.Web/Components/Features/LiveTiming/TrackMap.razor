@@ -1,0 +1,41 @@
+@using Devlabs.AcTiming.Domain.LiveTiming
+@namespace Devlabs.AcTiming.Web.Components.Features.LiveTiming
+
+<div class="track-map">
+    <img src="map.png" alt="Track Map" />
+    <svg viewBox="0 0 @ImageWidth @ImageHeight">
+        @foreach (var driver in Drivers)
+        {
+            var px = (driver.WorldX + XOffset) * ScaleFactor;
+            var py = (driver.WorldZ + ZOffset) * ScaleFactor;
+            var color = GetDriverColor(driver.CarId);
+
+            <circle cx="@px.ToString("F1")" cy="@py.ToString("F1")" r="14" fill="@color" stroke="#fff" stroke-width="2" opacity="0.9">
+                <title>@driver.DriverName — @driver.SpeedKmh.ToString("F0") km/h</title>
+            </circle>
+            @((MarkupString)$"<text x=\"{(px + 18):F1}\" y=\"{(py + 5):F1}\" fill=\"#fff\" font-size=\"13\" font-weight=\"bold\" font-family=\"sans-serif\">{driver.DriverName}</text>")
+        }
+    </svg>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<LiveDriverEntry> Drivers { get; set; } = [];
+
+    // Map parameters from map.ini
+    private const float XOffset = 377.507f;
+    private const float ZOffset = 888.612f;
+    private const float ScaleFactor = 1f;
+
+    // Actual PNG pixel dimensions (viewBox must match these exactly)
+    private const int ImageWidth = 875;
+    private const int ImageHeight = 710;
+
+    private static readonly string[] Colors =
+    [
+        "#e94560", "#4ecca3", "#3498db", "#f39c12",
+        "#9b59b6", "#1abc9c", "#e67e22", "#2ecc71",
+        "#e74c3c", "#00cec9", "#fd79a8", "#6c5ce7"
+    ];
+
+    private static string GetDriverColor(int carId) => Colors[carId % Colors.Length];
+}

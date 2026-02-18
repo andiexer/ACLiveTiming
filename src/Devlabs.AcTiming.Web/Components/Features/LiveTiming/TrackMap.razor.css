@@ -1,0 +1,21 @@
+.track-map {
+    position: relative;
+    display: inline-block;
+    max-width: 500px;
+}
+
+.track-map img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    opacity: 0.6;
+}
+
+.track-map svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}

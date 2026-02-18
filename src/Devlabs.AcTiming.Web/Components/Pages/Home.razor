@@ -1,0 +1,364 @@
+@page "/"
+@using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Web.Hubs
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+<PageTitle>Live Timing - AC Timing</PageTitle>
+
+<div class="live-timing">
+    <div class="session-header">
+        <h1>Live Timing</h1>
+        @if (_session is not null)
+        {
+            <div class="session-info">
+                <span class="session-badge">@_session.SessionType</span>
+                <span>@_session.TrackName @(string.IsNullOrEmpty(_session.TrackConfig) ? "" : $"({_session.TrackConfig})")</span>
+                <span>@_session.ServerName</span>
+                <span>@_session.AmbientTemp°C / @_session.RoadTemp°C</span>
+                <span class="session-timer">@FormatSessionTimer()</span>
+            </div>
+        }
+        else
+        {
+            <p class="no-session">No active session. Waiting for data...</p>
+        }
+        <div class="connection-status @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
+            @(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
+        </div>
+    </div>
+
+    @if (_leaderboard.Count > 0)
+    {
+        <div class="live-content">
+        <TrackMap Drivers="_leaderboard" />
+        <table class="timing-table">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Driver</th>
+                    <th>Car</th>
+                    <th>Best Lap</th>
+                    <th title="Most recent completed lap time. Red background = invalid (corner cut)">Last Lap</th>
+                    <th title="Difference between last lap and personal best lap">Delta</th>
+                    <th>Laps</th>
+                    <th>
+                        <div class="gap-toggle" title="@(_showInterval ? "Time behind the car directly ahead" : "Time behind the fastest driver")">
+                            <button class="gap-toggle-btn @(!_showInterval ? "active" : "")" @onclick="() => _showInterval = false">Gap</button>
+                            <button class="gap-toggle-btn @(_showInterval ? "active" : "")" @onclick="() => _showInterval = true">Int</button>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var sorted = _leaderboard
+                        .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
+                        .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
+                        .ToList();
+                    var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
+                    var overallBest = sorted
+                        .Where(d => d.BestLapTimeMs is not null and not 0)
+                        .Min(d => (int?)d.BestLapTimeMs);
+                }
+                @for (var i = 0; i < sorted.Count; i++)
+                {
+                    var driver = sorted[i];
+                    var prevDriver = i > 0 ? sorted[i - 1] : null;
+                    var isExpanded = _expandedCarIds.Contains(driver.CarId);
+                    <tr class="@(driver.IsConnected ? "" : "disconnected-driver") driver-row" @onclick="() => ToggleTelemetry(driver.CarId)">
+                        <td class="pos">@(i + 1)</td>
+                        <td class="driver-name">
+                            <span class="driver-dot" style="background-color: @GetDriverColor(driver.CarId)"></span>@driver.DriverName
+                        </td>
+                        <td>@driver.CarModel</td>
+                        <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
+                        <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
+                            @FormatLapTime(driver.LastLapTimeMs)
+                            @if (driver.LastLapCuts > 0)
+                            {
+                                <span class="cuts-badge" title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
+                            }
+                        </td>
+                        <td class="laptime @GetDeltaColorClass(driver)">@FormatDelta(driver)</td>
+                        <td>@driver.TotalLaps</td>
+                        <td class="gap">
+                            @if (_showInterval)
+                            {
+                                @FormatInterval(driver.BestLapTimeMs, prevDriver?.BestLapTimeMs)
+                            }
+                            else
+                            {
+                                @FormatGap(driver.BestLapTimeMs, fastestLap)
+                            }
+                        </td>
+                    </tr>
+                    @if (isExpanded)
+                    {
+                        <tr class="telemetry-row">
+                            <td colspan="8">
+                                <div class="telemetry-bar">
+                                    <span class="telemetry-item">
+                                        <span class="telemetry-label">SPD</span>
+                                        <span class="telemetry-value">@(driver.SpeedKmh > 1 ? $"{driver.SpeedKmh:F0} km/h" : "-")</span>
+                                    </span>
+                                    <span class="telemetry-item">
+                                        <span class="telemetry-label">GEAR</span>
+                                        <span class="telemetry-value">@FormatGear(driver.Gear)</span>
+                                    </span>
+                                    <span class="telemetry-item">
+                                        <span class="telemetry-label">RPM</span>
+                                        <span class="telemetry-value">@(driver.EngineRpm > 0 ? driver.EngineRpm.ToString("N0") : "-")</span>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+    else
+    {
+        <p class="no-data">No drivers on track.</p>
+    }
+
+    @if (_incidents.Count > 0)
+    {
+        <div class="incidents">
+            <h2>Incidents</h2>
+            @foreach (var incident in _incidents)
+            {
+                <div class="incident-entry">
+                    <span class="incident-time">@incident.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                    <span class="driver-dot" style="background-color: @GetDriverColor(incident.CarId)"></span>
+                    <span class="incident-desc">@FormatIncident(incident)</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private HubConnection? _hubConnection;
+    private LiveSessionInfo? _session;
+    private List<LiveDriverEntry> _leaderboard = [];
+    private DateTime? _sessionStartedAt;
+    private PeriodicTimer? _tickTimer;
+    private CancellationTokenSource? _tickCts;
+    private bool _showInterval;
+    private readonly HashSet<int> _expandedCarIds = [];
+    private readonly List<CollisionEvent> _incidents = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(TimingHub.HubUrl))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<LiveSessionInfo?>(TimingHubMethods.SessionUpdated, session =>
+        {
+            InvokeAsync(() =>
+            {
+                _session = session;
+                if (session is not null)
+                    _sessionStartedAt = DateTime.UtcNow - TimeSpan.FromMilliseconds(session.ElapsedMs);
+                else
+                    _sessionStartedAt = null;
+                StateHasChanged();
+            });
+        });
+
+        _hubConnection.On<List<LiveDriverEntry>>(TimingHubMethods.LeaderboardUpdated, leaderboard =>
+        {
+            InvokeAsync(() =>
+            {
+                _leaderboard = leaderboard;
+                StateHasChanged();
+            });
+        });
+
+        _hubConnection.On<LiveDriverEntry>(TimingHubMethods.DriverUpdated, driver =>
+        {
+            InvokeAsync(() =>
+            {
+                var idx = _leaderboard.FindIndex(d => d.CarId == driver.CarId);
+                if (idx >= 0)
+                    _leaderboard[idx] = driver;
+                else
+                    _leaderboard.Add(driver);
+                StateHasChanged();
+            });
+        });
+
+        _hubConnection.On<int>(TimingHubMethods.DriverDisconnected, carId =>
+        {
+            InvokeAsync(() =>
+            {
+                _leaderboard.RemoveAll(d => d.CarId == carId);
+                StateHasChanged();
+            });
+        });
+
+        _hubConnection.On<CollisionEvent>(TimingHubMethods.CollisionOccurred, evt =>
+        {
+            InvokeAsync(() =>
+            {
+                _incidents.Insert(0, evt);
+                if (_incidents.Count > 20)
+                    _incidents.RemoveAt(_incidents.Count - 1);
+                StateHasChanged();
+            });
+        });
+
+        await _hubConnection.StartAsync();
+        await _hubConnection.InvokeAsync("RequestFullState");
+
+        StartTickTimer();
+    }
+
+    private void StartTickTimer()
+    {
+        _tickCts = new CancellationTokenSource();
+        _tickTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = TickLoopAsync(_tickCts.Token);
+    }
+
+    private async Task TickLoopAsync(CancellationToken ct)
+    {
+        while (await _tickTimer!.WaitForNextTickAsync(ct))
+        {
+            if (_session is not null && _sessionStartedAt is not null)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    private void ToggleTelemetry(int carId)
+    {
+        if (!_expandedCarIds.Remove(carId))
+            _expandedCarIds.Add(carId);
+    }
+
+    private string FormatIncident(CollisionEvent evt)
+    {
+        var driver = GetDriverName(evt.CarId);
+        return evt.Type switch
+        {
+            CollisionType.Car => $"{driver} ↔ {GetDriverName(evt.OtherCarId!.Value)} — {evt.ImpactSpeedKmh:F0} km/h",
+            _ => $"{driver} had an environment crash — {evt.ImpactSpeedKmh:F0} km/h"
+        };
+    }
+
+    private string GetDriverName(int carId) =>
+        _leaderboard.FirstOrDefault(d => d.CarId == carId)?.DriverName ?? $"Car #{carId}";
+
+    private static readonly string[] DriverColors =
+    [
+        "#e94560", "#4ecca3", "#3498db", "#f39c12",
+        "#9b59b6", "#1abc9c", "#e67e22", "#2ecc71",
+        "#e74c3c", "#00cec9", "#fd79a8", "#6c5ce7"
+    ];
+
+    private static string GetDriverColor(int carId) => DriverColors[carId % DriverColors.Length];
+
+    private static string FormatLapTime(int? ms)
+    {
+        if (ms is null or 0) return "-";
+        var ts = TimeSpan.FromMilliseconds(ms.Value);
+        return ts.Minutes > 0
+            ? $"{ts.Minutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}"
+            : $"{ts.Seconds}.{ts.Milliseconds:D3}";
+    }
+
+    private static string FormatGap(int? driverMs, int? leaderMs)
+    {
+        if (driverMs is null or 0 || leaderMs is null or 0) return "-";
+        var gap = driverMs.Value - leaderMs.Value;
+        if (gap == 0) return FormatLapTime(driverMs);
+        return FormatSignedGap(gap);
+    }
+
+    private static string FormatInterval(int? driverMs, int? aheadMs)
+    {
+        if (aheadMs is null) return FormatLapTime(driverMs);
+        if (driverMs is null or 0 || aheadMs is 0) return "-";
+        var gap = driverMs.Value - aheadMs.Value;
+        if (gap == 0) return FormatLapTime(driverMs);
+        return FormatSignedGap(gap);
+    }
+
+    private static string FormatDelta(LiveDriverEntry driver)
+    {
+        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "-";
+        var delta = driver.LastLapTimeMs.Value - driver.BestLapTimeMs.Value;
+        if (delta == 0) return "PB";
+        return FormatSignedGap(delta);
+    }
+
+    private static string FormatSignedGap(int ms)
+    {
+        var sign = ms >= 0 ? "+" : "-";
+        var abs = Math.Abs(ms) / 1000.0;
+        return $"{sign}{abs:F3}";
+    }
+
+    private static string FormatGear(int gear) => gear switch
+    {
+        0 => "R",
+        1 => "N",
+        _ => (gear - 1).ToString()
+    };
+
+    private static string GetLastLapColorClass(LiveDriverEntry driver, int? overallBest)
+    {
+        if (driver.LastLapTimeMs is null or 0) return "";
+        if (driver.LastLapCuts > 0) return "";
+        if (overallBest is not null && driver.LastLapTimeMs == overallBest) return "lap-purple";
+        if (driver.BestLapTimeMs is not null && driver.LastLapTimeMs == driver.BestLapTimeMs) return "lap-green";
+        return "lap-yellow";
+    }
+
+    private static string GetDeltaColorClass(LiveDriverEntry driver)
+    {
+        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "";
+        var delta = driver.LastLapTimeMs.Value - driver.BestLapTimeMs.Value;
+        return delta == 0 ? "delta-pb" : "delta-positive";
+    }
+
+    private string FormatSessionTimer()
+    {
+        if (_session is null || _sessionStartedAt is null) return "";
+
+        if (_session.TimeLimitMinutes > 0)
+        {
+            var totalSeconds = _session.TimeLimitMinutes * 60;
+            var elapsed = (DateTime.UtcNow - _sessionStartedAt.Value).TotalSeconds;
+            var remaining = Math.Max(0, totalSeconds - elapsed);
+            var ts = TimeSpan.FromSeconds(remaining);
+            return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+        }
+
+        if (_session.LapLimit > 0)
+        {
+            var maxLaps = _leaderboard.Count > 0
+                ? _leaderboard.Max(d => d.TotalLaps)
+                : 0;
+            return $"Lap {maxLaps} / {_session.LapLimit}";
+        }
+
+        return "";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _tickCts?.Cancel();
+        _tickTimer?.Dispose();
+        _tickCts?.Dispose();
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+}

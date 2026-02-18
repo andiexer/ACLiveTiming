@@ -1,0 +1,365 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+h1 {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+    color: #e94560;
+}
+
+h1:focus {
+    outline: none;
+}
+
+/* Timing table */
+.timing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.timing-table thead {
+    background: #16213e;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #888;
+}
+
+.timing-table th,
+.timing-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #2a2a4a;
+}
+
+.timing-table tbody tr:nth-child(even) {
+    background: rgba(22, 33, 62, 0.5);
+}
+
+.timing-table tbody tr:hover {
+    background: rgba(233, 69, 96, 0.08);
+}
+
+.timing-table .pos {
+    font-weight: 700;
+    width: 3rem;
+}
+
+.timing-table .driver-name {
+    font-weight: 600;
+    color: #fff;
+}
+
+.driver-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    margin-right: 0.45rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.timing-table .laptime {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-weight: 600;
+    color: #4ecca3;
+}
+
+.timing-table .gap {
+    font-family: 'Consolas', 'Courier New', monospace;
+    color: #e94560;
+}
+
+.timing-table .disconnected-driver {
+    opacity: 0.4;
+}
+
+.timing-table .driver-row {
+    cursor: pointer;
+}
+
+/* Invalid lap (corner cuts) */
+.lap-invalid {
+    color: #eee !important;
+    background: rgba(233, 69, 96, 0.25);
+}
+
+.cuts-badge {
+    display: inline-block;
+    background: #e94560;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+/* Expandable telemetry row */
+.telemetry-row td {
+    padding: 0 !important;
+    border-bottom: 1px solid #2a2a4a;
+}
+
+.telemetry-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.35rem 0.75rem 0.35rem 3.75rem;
+    background: #0f0f23;
+}
+
+.telemetry-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.telemetry-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+}
+
+.telemetry-value {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* Session header */
+.session-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.session-info {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #aaa;
+}
+
+.session-badge {
+    background: #e94560;
+    color: #fff;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.connection-status {
+    margin-left: auto;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+}
+
+.connection-status.connected {
+    background: rgba(78, 204, 163, 0.2);
+    color: #4ecca3;
+}
+
+.connection-status.disconnected {
+    background: rgba(233, 69, 96, 0.2);
+    color: #e94560;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    background: #16213e;
+    color: #eee;
+    font-size: 0.85rem;
+    min-width: 180px;
+}
+
+.filter-input::placeholder {
+    color: #666;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: #e94560;
+}
+
+.btn {
+    padding: 0.5rem 1.25rem;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.btn:hover {
+    background: #d63851;
+}
+
+/* Live content layout */
+.live-content {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.live-content .timing-table {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .live-content {
+        flex-direction: column;
+    }
+}
+
+/* Status messages */
+.no-session,
+.no-data,
+.loading {
+    color: #666;
+    font-style: italic;
+    padding: 2rem;
+    text-align: center;
+}
+
+/* Error handling */
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+/* Lap time color coding */
+.lap-purple {
+    color: #a855f7 !important;
+}
+
+.lap-green {
+    color: #4ecca3 !important;
+}
+
+.lap-yellow {
+    color: #f59e0b !important;
+}
+
+.delta-positive {
+    color: #e94560 !important;
+}
+
+.delta-pb {
+    color: #4ecca3 !important;
+}
+
+/* Gap/Interval toggle */
+.gap-toggle {
+    display: inline-flex;
+    background: #1a1a2e;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gap-toggle-btn {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+
+.gap-toggle-btn:hover {
+    color: #aaa;
+}
+
+.gap-toggle-btn.active {
+    background: #e94560;
+    color: #fff;
+}
+
+/* Session timer */
+.session-timer {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    background: #16213e;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+}
+
+/* Incidents feed */
+.incidents {
+    margin-top: 2rem;
+}
+
+.incidents h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    margin: 0 0 0.75rem;
+}
+
+.incident-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid #1e1e3a;
+    font-size: 0.85rem;
+}
+
+.incident-time {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.incident-desc {
+    color: #ccc;
+}
+
+#blazor-error-ui {
+    display: none;
+}

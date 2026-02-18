@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Devlabs.AcTiming/Devlabs.AcTiming.csproj" />
+    <Project Path="src/Devlabs.AcTiming.Infrastructure/Devlabs.AcTiming.Infrastructure.csproj" />
+    <Project Path="src/Devlabs.AcTiming.Simulator/Devlabs.AcTiming.Simulator.csproj" />
+    <Project Path="src/Devlabs.AcTiming.Web/Devlabs.AcTiming.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Devlabs.AcTiming.Tests/Devlabs.AcTiming.Tests.csproj" />
+  </Folder>
+</Solution>

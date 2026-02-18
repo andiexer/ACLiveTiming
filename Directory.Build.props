@@ -1,0 +1,7 @@
+<Project>
+  <!-- Suppress debug symbols in Release builds (publish output stays clean) -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,70 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 0.75rem 1.5rem;
+    background: #16213e;
+    border-bottom: 2px solid #e94560;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e94560;
+    letter-spacing: 0.05em;
+}
+
+.nav-links {
+    display: flex;
+    gap: 1rem;
+}
+
+::deep .nav-link {
+    color: #aaa;
+    text-decoration: none;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+}
+
+::deep .nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::deep .nav-link.active {
+    color: #e94560;
+    background: rgba(233, 69, 96, 0.1);
+}
+
+.content {
+    flex: 1;
+    padding: 1.5rem;
+}
+
+#blazor-error-ui {
+    background: #e94560;
+    color: white;
+    padding: 0.5rem 1rem;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 1000;
+    display: none;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
