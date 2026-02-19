@@ -21,7 +21,7 @@ public class AcUdpClient : IAcUdpClient
     public event EventHandler? SessionEnded;
     public event EventHandler<LiveDriverEntry>? DriverConnected;
     public event EventHandler<int>? DriverDisconnected;
-    public event EventHandler<LiveDriverEntry>? DriverUpdated;
+    public event EventHandler<DriverTelemetry>? DriverUpdated;
     public event EventHandler<LapCompletedEvent>? LapCompleted;
     public event EventHandler<CollisionEvent>? CollisionOccurred;
 
@@ -267,21 +267,17 @@ public class AcUdpClient : IAcUdpClient
         _logger.LogDebug("CarUpdate: CarId={CarId} Pos=({X:F1},{Y:F1},{Z:F1}) Gear={Gear} RPM={Rpm} Spline={Spline:F4} Speed={Speed:F1}km/h",
             update.CarId, update.Position.X, update.Position.Y, update.Position.Z, update.Gear, update.EngineRpm, update.NormalizedSplinePos, speedKmh);
 
-        var entry = new LiveDriverEntry
+        var telemetry = new DriverTelemetry
         {
             CarId = update.CarId,
-            DriverName = string.Empty, // filled by service from cached state
-            DriverGuid = string.Empty,
-            CarModel = string.Empty,
             SplinePosition = update.NormalizedSplinePos,
             WorldX = update.Position.X,
             WorldZ = update.Position.Z,
             SpeedKmh = speedKmh,
             Gear = update.Gear,
-            EngineRpm = update.EngineRpm,
-            IsConnected = true
+            EngineRpm = update.EngineRpm
         };
-        DriverUpdated?.Invoke(this, entry);
+        DriverUpdated?.Invoke(this, telemetry);
     }
 
     private void HandleLapCompleted(byte[] data)

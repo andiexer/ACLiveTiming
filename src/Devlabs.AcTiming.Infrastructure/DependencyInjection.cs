@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.Configure<AcServerOptions>(configuration.GetSection(AcServerOptions.SectionName));
         services.AddSingleton<ILiveTimingService, LiveTimingService>();
         services.AddSingleton<IAcUdpClient, AcUdpClient>();
+        services.AddSingleton<AcServerEventProcessor>();
         services.AddHostedService<AcServerBackgroundService>();
 
         return services;

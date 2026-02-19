@@ -2,6 +2,7 @@ using Devlabs.AcTiming.Domain.LiveTiming;
 
 namespace Devlabs.AcTiming.Application.Shared;
 
+
 public interface IAcUdpClient : IAsyncDisposable
 {
     Task StartAsync(CancellationToken ct = default);
@@ -14,7 +15,7 @@ public interface IAcUdpClient : IAsyncDisposable
     event EventHandler SessionEnded;
     event EventHandler<LiveDriverEntry> DriverConnected;
     event EventHandler<int> DriverDisconnected;
-    event EventHandler<LiveDriverEntry> DriverUpdated;
+    event EventHandler<DriverTelemetry> DriverUpdated;
     event EventHandler<LapCompletedEvent> LapCompleted;
     event EventHandler<CollisionEvent> CollisionOccurred;
 }

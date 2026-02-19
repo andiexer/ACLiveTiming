@@ -62,11 +62,11 @@ public class TimingHubNotifier : IHostedService
     private async void OnDriverDisconnected(object? sender, int carId) =>
         await _hubContext.Clients.All.SendAsync(TimingHubMethods.DriverDisconnected, carId);
 
-    private async void OnDriverUpdated(object? sender, LiveDriverEntry driver)
+    private async void OnDriverUpdated(object? sender, DriverTelemetry telemetry)
     {
         // CarUpdate packets fire very frequently - read merged state from service
-        // so we never push incomplete data (empty name, null lap times) to the UI
-        var merged = _liveTimingService.GetDriver(driver.CarId);
+        // so the UI always gets a complete, up-to-date entry
+        var merged = _liveTimingService.GetDriver(telemetry.CarId);
         if (merged is not null)
             await _hubContext.Clients.All.SendAsync(TimingHubMethods.DriverUpdated, merged);
     }

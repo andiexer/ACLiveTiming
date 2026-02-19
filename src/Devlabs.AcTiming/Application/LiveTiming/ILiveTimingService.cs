@@ -10,6 +10,7 @@ public interface ILiveTimingService
 
     void UpdateSession(LiveSessionInfo session);
     void UpdateDriver(LiveDriverEntry driver);
+    void UpdateDriverTelemetry(DriverTelemetry telemetry);
     void RemoveDriver(int carId);
     void ClearSession();
 }
