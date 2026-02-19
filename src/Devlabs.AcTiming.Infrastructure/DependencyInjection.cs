@@ -1,3 +1,4 @@
+using Devlabs.AcTiming.Application.Cars;
 using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Infrastructure.AcServer;
@@ -18,6 +19,7 @@ public static class DependencyInjection
             options.UseSqlite(connectionString));
 
         services.Configure<AcServerOptions>(configuration.GetSection(AcServerOptions.SectionName));
+        services.AddSingleton<ICarBrandResolver, CarBrandResolver>();
         services.AddSingleton<ILiveTimingService, LiveTimingService>();
         services.AddSingleton<IAcUdpClient, AcUdpClient>();
         services.AddSingleton<AcServerEventProcessor>();

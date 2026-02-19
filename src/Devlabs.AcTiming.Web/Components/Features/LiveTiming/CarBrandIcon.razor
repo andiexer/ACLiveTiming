@@ -1,0 +1,31 @@
+@using Devlabs.AcTiming.Application.Cars
+
+@{
+    var car = Resolver.Resolve(Model);
+}
+
+@if (car is not null)
+{
+    <span class="car-brand" title="@Model">
+        <img class="brand-icon"
+             src="https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/@(car.Slug).png"
+             alt="@car.Model"
+             onerror="this.style.display='none'" />
+        @if (ShowLabel)
+        {
+            <span class="brand-label">@car</span>
+        }
+    </span>
+}
+else
+{
+    <span class="car-brand car-brand-unknown" title="@Model">@Model</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Model { get; set; } = "";
+    [Parameter, EditorRequired] public ICarBrandResolver Resolver { get; set; } = default!;
+
+    /// <summary>When true, renders the raw model name alongside the icon (e.g. in the driver panel).</summary>
+    [Parameter] public bool ShowLabel { get; set; }
+}

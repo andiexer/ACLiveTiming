@@ -1,8 +1,10 @@
 @page "/"
+@using Devlabs.AcTiming.Application.Cars
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Web.Hubs
 @using Microsoft.AspNetCore.SignalR.Client
 @implements IAsyncDisposable
+@inject ICarBrandResolver CarBrandResolver
 
 <PageTitle>Live Timing - AC Timing</PageTitle>
 
@@ -134,7 +136,9 @@
                                         <td class="driver-name">
                                             <span class="driver-dot" style="background-color: @GetDriverColor(driver.CarId)"></span>@driver.DriverName
                                         </td>
-                                        <td class="car-name">@driver.CarModel</td>
+                                        <td class="car-name">
+                                            <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver" ShowLabel/>
+                                        </td>
                                         <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
                                         <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
                                             @FormatLapTime(driver.LastLapTimeMs)
@@ -177,7 +181,9 @@
                                 <span class="driver-dot large-dot" style="background-color: @GetDriverColor(sel.CarId)"></span>
                                 <div>
                                     <div class="driver-panel-name">@sel.DriverName</div>
-                                    <div class="driver-panel-car">@sel.CarModel</div>
+                                    <div class="driver-panel-car">
+                                        <CarBrandIcon Model="@sel.CarModel" Resolver="CarBrandResolver" ShowLabel="true" />
+                                    </div>
                                 </div>
                             </div>
                             <button class="close-btn" @onclick="ClearSelection" title="Close">✕</button>
