@@ -1,59 +1,67 @@
 .page {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    background: #1a1a2e;
-    color: #eee;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
 }
 
 .navbar {
+    height: 44px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 2rem;
-    padding: 0.75rem 1.5rem;
-    background: #16213e;
-    border-bottom: 2px solid #e94560;
+    padding: 0 1.25rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
 }
 
 .nav-brand {
-    font-size: 1.25rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    color: #e94560;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    color: var(--text-primary);
+    text-transform: uppercase;
 }
 
 .nav-links {
     display: flex;
-    gap: 1rem;
+    gap: 0.25rem;
 }
 
 ::deep .nav-link {
-    color: #aaa;
+    color: var(--text-muted);
     text-decoration: none;
     padding: 0.25rem 0.75rem;
     border-radius: 4px;
-    transition: color 0.2s, background 0.2s;
+    font-size: 0.82rem;
+    transition: color 0.15s, background 0.15s;
 }
 
 ::deep .nav-link:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, .06);
 }
 
 ::deep .nav-link.active {
-    color: #e94560;
-    background: rgba(233, 69, 96, 0.1);
+    color: var(--accent);
+    background: transparent;
+    border-bottom: 2px solid var(--accent);
 }
 
+/* Content area: pages own their own padding */
 .content {
     flex: 1;
-    padding: 1.5rem;
+    overflow: hidden;
+    min-height: 0;
 }
 
 #blazor-error-ui {
-    background: #e94560;
-    color: white;
+    background: var(--danger);
+    color: #fff;
     padding: 0.5rem 1rem;
     position: fixed;
     bottom: 0;

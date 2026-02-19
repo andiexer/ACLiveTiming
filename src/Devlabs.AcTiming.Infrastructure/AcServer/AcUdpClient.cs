@@ -119,7 +119,8 @@ public class AcUdpClient : IAcUdpClient
     public async Task RequestSessionInfoAsync()
     {
         if (_udpClient is null || _serverEndpoint is null) return;
-        var packet = new byte[] { AcProtocol.GetSessionInfo };
+        // GetSessionInfo: byte(204) + int16(sessionIndex), -1 = current session
+        var packet = new byte[] { AcProtocol.GetSessionInfo, 0xFF, 0xFF };
         await _udpClient.SendAsync(packet, _serverEndpoint);
     }
 
@@ -188,8 +189,6 @@ public class AcUdpClient : IAcUdpClient
                     break;
                 case AcProtocol.Version:
                     _logger.LogDebug("Version packet received (protocol handshake)");
-                    await SendRealtimePosIntervalAsync();
-                    await SendGetCarInfoRangeAsync();
                     break;
                 case AcProtocol.CarInfo:
                     HandleCarInfo(data);

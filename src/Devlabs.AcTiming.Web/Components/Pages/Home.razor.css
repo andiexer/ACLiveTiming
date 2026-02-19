@@ -1,0 +1,525 @@
+/* ── Page frame ─────────────────────────────────────────────────────────── */
+.timing-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Session bar ────────────────────────────────────────────────────────── */
+.session-bar {
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+}
+
+.session-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    overflow: hidden;
+}
+
+.session-type-badge {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+
+.session-track {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.session-server,
+.session-temps {
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.session-separator {
+    color: var(--border);
+    user-select: none;
+}
+
+.session-waiting {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.session-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.session-timer {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    padding: 0.18rem 0.55rem;
+    border-radius: 3px;
+}
+
+.connection-dot {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.18rem 0.55rem;
+    border-radius: 3px;
+}
+
+.connection-dot.connected {
+    color: var(--success);
+    background: rgba(34, 197, 94, .12);
+}
+
+.connection-dot.disconnected {
+    color: var(--danger);
+    background: rgba(239, 68, 68, .12);
+}
+
+/* ── Two-column grid ────────────────────────────────────────────────────── */
+.timing-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0.625rem;
+    padding: 0.625rem;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.left-col,
+.right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* ── Base panel ─────────────────────────────────────────────────────────── */
+.panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.panel-header {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-table-header);
+    flex-shrink: 0;
+}
+
+.panel-divider {
+    height: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+.panel-empty {
+    display: block;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* ── Map panel ──────────────────────────────────────────────────────────── */
+.map-panel {
+    flex: 55;
+}
+
+.map-body {
+    flex: 1;
+    overflow: hidden;
+    /* flex container so .track-map's max-height: 100% resolves against a definite height */
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0.5rem;
+    min-height: 0;
+}
+
+/* ── Events panel ───────────────────────────────────────────────────────── */
+.events-panel {
+    flex: 45;
+}
+
+.events-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.event-item {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+}
+
+.event-item:hover {
+    background: var(--bg-hover);
+}
+
+.event-indicator {
+    width: 3px;
+    flex-shrink: 0;
+}
+
+.event-indicator.event-sessionstart,
+.event-indicator.event-sessionend,
+.event-indicator.event-disconnect { background: var(--text-muted); }
+.event-indicator.event-join       { background: var(--accent);     }
+.event-indicator.event-collision  { background: var(--danger);     }
+
+.event-content {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.32rem 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.event-time {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.event-message {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Leaderboard panel ──────────────────────────────────────────────────── */
+.leaderboard-panel {
+    flex: 1;
+}
+
+.leaderboard-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ── Timing table ───────────────────────────────────────────────────────── */
+.timing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.timing-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.42rem 0.7rem;
+    text-align: left;
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.timing-table td {
+    padding: 0.42rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.timing-table .pos {
+    font-weight: 700;
+    width: 2.5rem;
+    color: var(--text-muted);
+}
+
+.timing-table .driver-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.timing-table .car-name {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.timing-table .laptime {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.timing-table .gap {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.timing-table .driver-row {
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.timing-table .driver-row:hover {
+    background: var(--bg-hover);
+}
+
+.timing-table .driver-row.selected {
+    background: var(--bg-hover);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.timing-table .disconnected {
+    opacity: 0.4;
+}
+
+/* ── Gap / Interval toggle ──────────────────────────────────────────────── */
+.gap-toggle {
+    display: inline-flex;
+    background: var(--bg-app);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.gap-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.45rem;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+
+.gap-toggle-btn:hover {
+    color: var(--text-secondary);
+}
+
+.gap-toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* ── Selected driver panel ──────────────────────────────────────────────── */
+.driver-panel {
+    flex-shrink: 0;
+    border-left: 3px solid var(--accent) !important;
+}
+
+/* Driver identity row */
+.driver-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    background: var(--bg-hover);
+    flex-shrink: 0;
+}
+
+.driver-panel-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.large-dot {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.driver-panel-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.driver-panel-car {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+    border-radius: 3px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, .08);
+}
+
+/* ── Sections (telemetry + historical) ──────────────────────────────────── */
+.dp-section {
+    flex-shrink: 0;
+}
+
+.dp-section-telemetry {
+    background: var(--bg-hover);
+}
+
+.dp-section-history {
+    background: var(--bg-surface);
+}
+
+.dp-section-header {
+    padding: 0.32rem 0.9rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Live telemetry: one-row grid ───────────────────────────────────────── */
+.dp-telem-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+}
+
+.dp-telem-cell {
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-right: 1px solid var(--border);
+}
+
+.dp-telem-cell:last-child {
+    border-right: none;
+}
+
+.dp-telem-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
+
+.dp-telem-value {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.dp-telem-unit {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.dp-telem-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+/* RPM cell: bar sits above the value */
+.dp-telem-rpm .rpm-bar {
+    height: 7px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.15rem;
+}
+
+.dp-telem-rpm .rpm-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.15s ease;
+}
+
+/* ── Historical stats rows ──────────────────────────────────────────────── */
+.dp-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.32rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.dp-stat-row.last {
+    border-bottom: none;
+}
+
+.dp-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.dp-stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dp-stat-value.placeholder {
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-weight: normal;
+}

@@ -6,141 +6,243 @@
 
 <PageTitle>Live Timing - AC Timing</PageTitle>
 
-<div class="live-timing">
-    <div class="session-header">
-        <h1>Live Timing</h1>
-        @if (_session is not null)
-        {
-            <div class="session-info">
-                <span class="session-badge">@_session.SessionType</span>
-                <span>@_session.TrackName @(string.IsNullOrEmpty(_session.TrackConfig) ? "" : $"({_session.TrackConfig})")</span>
-                <span>@_session.ServerName</span>
-                <span>@_session.AmbientTemp°C / @_session.RoadTemp°C</span>
-                <span class="session-timer">@FormatSessionTimer()</span>
-            </div>
-        }
-        else
-        {
-            <p class="no-session">No active session. Waiting for data...</p>
-        }
-        <div class="connection-status @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
-            @(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
+<div class="timing-page">
+
+    <!-- ── Session bar ───────────────────────────────────────────────────── -->
+    <div class="session-bar">
+        <div class="session-bar-left">
+            @if (_session is not null)
+            {
+                <span class="session-type-badge">@_session.SessionType</span>
+                <span class="session-track">
+                    @_session.TrackName@(string.IsNullOrEmpty(_session.TrackConfig) ? "" : $" · {_session.TrackConfig}")
+                </span>
+                <span class="session-separator">│</span>
+                <span class="session-server">@_session.ServerName</span>
+                <span class="session-separator">│</span>
+                <span class="session-temps">Road @_session.RoadTemp°C</span>
+            }
+            else
+            {
+                <span class="session-waiting">Waiting for session…</span>
+            }
+        </div>
+        <div class="session-bar-right">
+            @{
+                var timer = FormatSessionTimer();
+                if (!string.IsNullOrEmpty(timer))
+                {
+                    <span class="session-timer">@timer</span>
+                }
+            }
+            <span class="connection-dot @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
+                ●&nbsp;@(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
+            </span>
         </div>
     </div>
 
-    @if (_leaderboard.Count > 0)
-    {
-        <div class="live-content">
-        <TrackMap Drivers="_leaderboard" />
-        <table class="timing-table">
-            <thead>
-                <tr>
-                    <th>Pos</th>
-                    <th>Driver</th>
-                    <th>Car</th>
-                    <th>Best Lap</th>
-                    <th title="Most recent completed lap time. Red background = invalid (corner cut)">Last Lap</th>
-                    <th title="Difference between last lap and personal best lap">Delta</th>
-                    <th>Laps</th>
-                    <th>
-                        <div class="gap-toggle" title="@(_showInterval ? "Time behind the car directly ahead" : "Time behind the fastest driver")">
-                            <button class="gap-toggle-btn @(!_showInterval ? "active" : "")" @onclick="() => _showInterval = false">Gap</button>
-                            <button class="gap-toggle-btn @(_showInterval ? "active" : "")" @onclick="() => _showInterval = true">Int</button>
-                        </div>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var sorted = _leaderboard
-                        .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
-                        .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
-                        .ToList();
-                    var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
-                    var overallBest = sorted
-                        .Where(d => d.BestLapTimeMs is not null and not 0)
-                        .Min(d => (int?)d.BestLapTimeMs);
-                }
-                @for (var i = 0; i < sorted.Count; i++)
-                {
-                    var driver = sorted[i];
-                    var prevDriver = i > 0 ? sorted[i - 1] : null;
-                    var isExpanded = _expandedCarIds.Contains(driver.CarId);
-                    <tr class="@(driver.IsConnected ? "" : "disconnected-driver") driver-row" @onclick="() => ToggleTelemetry(driver.CarId)">
-                        <td class="pos">@(i + 1)</td>
-                        <td class="driver-name">
-                            <span class="driver-dot" style="background-color: @GetDriverColor(driver.CarId)"></span>@driver.DriverName
-                        </td>
-                        <td>@driver.CarModel</td>
-                        <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
-                        <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
-                            @FormatLapTime(driver.LastLapTimeMs)
-                            @if (driver.LastLapCuts > 0)
-                            {
-                                <span class="cuts-badge" title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
-                            }
-                        </td>
-                        <td class="laptime @GetDeltaColorClass(driver)">@FormatDelta(driver)</td>
-                        <td>@driver.TotalLaps</td>
-                        <td class="gap">
-                            @if (_showInterval)
-                            {
-                                @FormatInterval(driver.BestLapTimeMs, prevDriver?.BestLapTimeMs)
-                            }
-                            else
-                            {
-                                @FormatGap(driver.BestLapTimeMs, fastestLap)
-                            }
-                        </td>
-                    </tr>
-                    @if (isExpanded)
-                    {
-                        <tr class="telemetry-row">
-                            <td colspan="8">
-                                <div class="telemetry-bar">
-                                    <span class="telemetry-item">
-                                        <span class="telemetry-label">SPD</span>
-                                        <span class="telemetry-value">@(driver.SpeedKmh > 1 ? $"{driver.SpeedKmh:F0} km/h" : "-")</span>
-                                    </span>
-                                    <span class="telemetry-item">
-                                        <span class="telemetry-label">GEAR</span>
-                                        <span class="telemetry-value">@FormatGear(driver.Gear)</span>
-                                    </span>
-                                    <span class="telemetry-item">
-                                        <span class="telemetry-label">RPM</span>
-                                        <span class="telemetry-value">@(driver.EngineRpm > 0 ? driver.EngineRpm.ToString("N0") : "-")</span>
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-        </div>
-    }
-    else
-    {
-        <p class="no-data">No drivers on track.</p>
-    }
+    <!-- ── Two-column grid ───────────────────────────────────────────────── -->
+    <div class="timing-grid">
 
-    @if (_incidents.Count > 0)
-    {
-        <div class="incidents">
-            <h2>Incidents</h2>
-            @foreach (var incident in _incidents)
-            {
-                <div class="incident-entry">
-                    <span class="incident-time">@incident.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
-                    <span class="driver-dot" style="background-color: @GetDriverColor(incident.CarId)"></span>
-                    <span class="incident-desc">@FormatIncident(incident)</span>
+        <!-- Left column: map + events -->
+        <div class="left-col">
+
+            <div class="panel map-panel">
+                <div class="panel-header">Map</div>
+                <div class="map-body">
+                    @if (_leaderboard.Count > 0)
+                    {
+                        <TrackMap Drivers="_leaderboard" />
+                    }
+                    else
+                    {
+                        <span class="panel-empty">No drivers on track</span>
+                    }
                 </div>
-            }
+            </div>
+
+            <div class="panel events-panel">
+                <div class="panel-header">Events</div>
+                <div class="events-list">
+                    @if (_events.Count == 0)
+                    {
+                        <span class="panel-empty">No events yet</span>
+                    }
+                    @foreach (var evt in _events)
+                    {
+                        <div class="event-item">
+                            <div class="event-indicator event-@evt.Kind.ToString().ToLower()"></div>
+                            <div class="event-content">
+                                <span class="event-time">@evt.Timestamp.ToLocalTime().ToString("HH:mm:ss")</span>
+                                <span class="event-message">@evt.Message</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
         </div>
-    }
+
+        <!-- Right column: leaderboard + selected driver -->
+        <div class="right-col">
+
+            @{
+                var sorted = _leaderboard
+                    .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
+                    .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
+                    .ToList();
+                var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
+                var overallBest = sorted
+                    .Where(d => d.BestLapTimeMs is not null and not 0)
+                    .Min(d => (int?)d.BestLapTimeMs);
+            }
+            <div class="panel leaderboard-panel">
+                <div class="leaderboard-scroll">
+                    @if (_leaderboard.Count == 0)
+                    {
+                        <span class="panel-empty">No drivers on track</span>
+                    }
+                    else
+                    {
+                        <table class="timing-table">
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th>Driver</th>
+                                    <th>Car</th>
+                                    <th>Best Lap</th>
+                                    <th title="Most recent completed lap. Red = invalid (corner cut).">Last Lap</th>
+                                    <th title="Delta to personal best">Δ</th>
+                                    <th>Laps</th>
+                                    <th>
+                                        <div class="gap-toggle" title="@(_showInterval ? "Gap to car ahead" : "Gap to leader")">
+                                            <button class="gap-toggle-btn @(!_showInterval ? "active" : "")" @onclick="() => _showInterval = false">Gap</button>
+                                            <button class="gap-toggle-btn @(_showInterval ? "active" : "")" @onclick="() => _showInterval = true">Int</button>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < sorted.Count; i++)
+                                {
+                                    var driver = sorted[i];
+                                    var prevDriver = i > 0 ? sorted[i - 1] : null;
+                                    var isSelected = driver.CarId == _selectedCarId;
+                                    <tr class="driver-row @(isSelected ? "selected" : "") @(driver.IsConnected ? "" : "disconnected")"
+                                        @onclick="() => SelectDriver(driver.CarId)">
+                                        <td class="pos">@(i + 1)</td>
+                                        <td class="driver-name">
+                                            <span class="driver-dot" style="background-color: @GetDriverColor(driver.CarId)"></span>@driver.DriverName
+                                        </td>
+                                        <td class="car-name">@driver.CarModel</td>
+                                        <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
+                                        <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
+                                            @FormatLapTime(driver.LastLapTimeMs)
+                                            @if (driver.LastLapCuts > 0)
+                                            {
+                                                <span class="cuts-badge" title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
+                                            }
+                                        </td>
+                                        <td class="laptime @GetDeltaColorClass(driver)">@FormatDelta(driver)</td>
+                                        <td>@driver.TotalLaps</td>
+                                        <td class="gap">
+                                            @if (_showInterval)
+                                            {
+                                                @FormatInterval(driver.BestLapTimeMs, prevDriver?.BestLapTimeMs)
+                                            }
+                                            else
+                                            {
+                                                @FormatGap(driver.BestLapTimeMs, fastestLap)
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+
+            <!-- Selected driver panel — only visible when a row is selected -->
+            @if (_selectedCarId is not null)
+            {
+                var sel = SelectedDriver;
+                if (sel is not null)
+                {
+                    <div class="panel driver-panel">
+
+                        <!-- Driver identity -->
+                        <div class="driver-panel-header">
+                            <div class="driver-panel-identity">
+                                <span class="driver-dot large-dot" style="background-color: @GetDriverColor(sel.CarId)"></span>
+                                <div>
+                                    <div class="driver-panel-name">@sel.DriverName</div>
+                                    <div class="driver-panel-car">@sel.CarModel</div>
+                                </div>
+                            </div>
+                            <button class="close-btn" @onclick="ClearSelection" title="Close">✕</button>
+                        </div>
+
+                        <!-- Live Telemetry -->
+                        <div class="dp-section dp-section-telemetry">
+                            <div class="dp-section-header">Live Telemetry</div>
+                            <div class="dp-telem-row">
+                                <div class="dp-telem-cell">
+                                    <div class="dp-telem-main">
+                                        <span class="dp-telem-value">@(sel.SpeedKmh > 1 ? $"{sel.SpeedKmh:F0}" : "—")</span>
+                                        @if (sel.SpeedKmh > 1) { <span class="dp-telem-unit">km/h</span> }
+                                    </div>
+                                    <div class="dp-telem-label">Speed</div>
+                                </div>
+                                <div class="dp-telem-cell">
+                                    <div class="dp-telem-main">
+                                        <span class="dp-telem-value">@FormatGear(sel.Gear)</span>
+                                    </div>
+                                    <div class="dp-telem-label">Gear</div>
+                                </div>
+                                <div class="dp-telem-cell dp-telem-rpm">
+                                    <div class="rpm-bar">
+                                        <div class="rpm-fill" style="width: @(Math.Min(100, sel.EngineRpm / 100.0).ToString("F0"))%"></div>
+                                    </div>
+                                    <div class="dp-telem-main">
+                                        <span class="dp-telem-value">@(sel.EngineRpm > 0 ? sel.EngineRpm.ToString("N0") : "—")</span>
+                                    </div>
+                                    <div class="dp-telem-label">RPM</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historical -->
+                        <div class="dp-section dp-section-history">
+                            <div class="dp-section-header">Historical</div>
+                            <div class="dp-stat-row">
+                                <span class="dp-stat-label">Best this session</span>
+                                <span class="dp-stat-value">@FormatLapTime(sel.BestLapTimeMs)</span>
+                            </div>
+                            <div class="dp-stat-row">
+                                <span class="dp-stat-label">Best all-time (car)</span>
+                                <span class="dp-stat-value placeholder">—</span>
+                            </div>
+                            <div class="dp-stat-row">
+                                <span class="dp-stat-label">Total laps</span>
+                                <span class="dp-stat-value">@sel.TotalLaps</span>
+                            </div>
+                            <div class="dp-stat-row last">
+                                <span class="dp-stat-label">Incidents</span>
+                                <span class="dp-stat-value">@(_incidents.Count(i => i.CarId == sel.CarId))</span>
+                            </div>
+                        </div>
+
+                    </div>
+                }
+            }
+
+        </div>
+    </div>
 </div>
 
 @code {
+    // ── SignalR & session state ────────────────────────────────────────────
     private HubConnection? _hubConnection;
     private LiveSessionInfo? _session;
     private List<LiveDriverEntry> _leaderboard = [];
@@ -148,9 +250,33 @@
     private PeriodicTimer? _tickTimer;
     private CancellationTokenSource? _tickCts;
     private bool _showInterval;
-    private readonly HashSet<int> _expandedCarIds = [];
+
+    // ── Driver selection ──────────────────────────────────────────────────
+    private int? _selectedCarId;
+    private LiveDriverEntry? SelectedDriver =>
+        _selectedCarId is null ? null : _leaderboard.FirstOrDefault(d => d.CarId == _selectedCarId);
+
+    private void SelectDriver(int carId) =>
+        _selectedCarId = _selectedCarId == carId ? null : carId;
+
+    private void ClearSelection() => _selectedCarId = null;
+
+    // ── Events log ────────────────────────────────────────────────────────
+    private enum EventKind { SessionStart, SessionEnd, Join, Disconnect, Collision }
+    private record TimingEvent(EventKind Kind, string Message, DateTime Timestamp);
+    private readonly List<TimingEvent> _events = [];
+
+    private void AddEvent(EventKind kind, string message)
+    {
+        _events.Insert(0, new TimingEvent(kind, message, DateTime.UtcNow));
+        if (_events.Count > 10)
+            _events.RemoveAt(_events.Count - 1);
+    }
+
+    // ── Collision tracking (for incident count in driver panel) ───────────
     private readonly List<CollisionEvent> _incidents = [];
 
+    // ── Initialization ────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         _hubConnection = new HubConnectionBuilder()
@@ -164,9 +290,15 @@
             {
                 _session = session;
                 if (session is not null)
+                {
                     _sessionStartedAt = DateTime.UtcNow - TimeSpan.FromMilliseconds(session.ElapsedMs);
+                    AddEvent(EventKind.SessionStart, $"Session started — {session.TrackName}");
+                }
                 else
+                {
                     _sessionStartedAt = null;
+                    AddEvent(EventKind.SessionEnd, "Session ended");
+                }
                 StateHasChanged();
             });
         });
@@ -188,7 +320,10 @@
                 if (idx >= 0)
                     _leaderboard[idx] = driver;
                 else
+                {
                     _leaderboard.Add(driver);
+                    AddEvent(EventKind.Join, $"{driver.DriverName} joined");
+                }
                 StateHasChanged();
             });
         });
@@ -197,7 +332,10 @@
         {
             InvokeAsync(() =>
             {
+                var name = _leaderboard.FirstOrDefault(d => d.CarId == carId)?.DriverName ?? $"Car #{carId}";
                 _leaderboard.RemoveAll(d => d.CarId == carId);
+                if (_selectedCarId == carId) _selectedCarId = null;
+                AddEvent(EventKind.Disconnect, $"{name} disconnected");
                 StateHasChanged();
             });
         });
@@ -207,8 +345,9 @@
             InvokeAsync(() =>
             {
                 _incidents.Insert(0, evt);
-                if (_incidents.Count > 20)
+                if (_incidents.Count > 50)
                     _incidents.RemoveAt(_incidents.Count - 1);
+                AddEvent(EventKind.Collision, FormatIncident(evt));
                 StateHasChanged();
             });
         });
@@ -237,19 +376,14 @@
 
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
-    private void ToggleTelemetry(int carId)
-    {
-        if (!_expandedCarIds.Remove(carId))
-            _expandedCarIds.Add(carId);
-    }
-
+    // ── Formatting helpers ─────────────────────────────────────────────────
     private string FormatIncident(CollisionEvent evt)
     {
         var driver = GetDriverName(evt.CarId);
         return evt.Type switch
         {
             CollisionType.Car => $"{driver} ↔ {GetDriverName(evt.OtherCarId!.Value)} — {evt.ImpactSpeedKmh:F0} km/h",
-            _ => $"{driver} had an environment crash — {evt.ImpactSpeedKmh:F0} km/h"
+            _ => $"{driver} environment crash — {evt.ImpactSpeedKmh:F0} km/h"
         };
     }
 
@@ -267,7 +401,7 @@
 
     private static string FormatLapTime(int? ms)
     {
-        if (ms is null or 0) return "-";
+        if (ms is null or 0) return "—";
         var ts = TimeSpan.FromMilliseconds(ms.Value);
         return ts.Minutes > 0
             ? $"{ts.Minutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}"
@@ -276,7 +410,7 @@
 
     private static string FormatGap(int? driverMs, int? leaderMs)
     {
-        if (driverMs is null or 0 || leaderMs is null or 0) return "-";
+        if (driverMs is null or 0 || leaderMs is null or 0) return "—";
         var gap = driverMs.Value - leaderMs.Value;
         if (gap == 0) return FormatLapTime(driverMs);
         return FormatSignedGap(gap);
@@ -285,7 +419,7 @@
     private static string FormatInterval(int? driverMs, int? aheadMs)
     {
         if (aheadMs is null) return FormatLapTime(driverMs);
-        if (driverMs is null or 0 || aheadMs is 0) return "-";
+        if (driverMs is null or 0 || aheadMs is 0) return "—";
         var gap = driverMs.Value - aheadMs.Value;
         if (gap == 0) return FormatLapTime(driverMs);
         return FormatSignedGap(gap);
@@ -293,7 +427,7 @@
 
     private static string FormatDelta(LiveDriverEntry driver)
     {
-        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "-";
+        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "—";
         var delta = driver.LastLapTimeMs.Value - driver.BestLapTimeMs.Value;
         if (delta == 0) return "PB";
         return FormatSignedGap(delta);
@@ -344,9 +478,7 @@
 
         if (_session.LapLimit > 0)
         {
-            var maxLaps = _leaderboard.Count > 0
-                ? _leaderboard.Max(d => d.TotalLaps)
-                : 0;
+            var maxLaps = _leaderboard.Count > 0 ? _leaderboard.Max(d => d.TotalLaps) : 0;
             return $"Lap {maxLaps} / {_session.LapLimit}";
         }
 

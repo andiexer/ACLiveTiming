@@ -1,15 +1,19 @@
 .track-map {
     position: relative;
-    display: inline-block;
-    max-width: 500px;
+    /* Scale to fit both axes: as large as possible without exceeding either
+       the panel width or the panel height. */
+    aspect-ratio: 875 / 710;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
 }
 
 .track-map img {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
-    border-radius: 8px;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 .track-map svg {
