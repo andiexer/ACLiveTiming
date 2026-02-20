@@ -1,25 +1,91 @@
+.track-map-unavailable {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--text-muted, #666);
+    font-size: 0.85rem;
+}
+
 .track-map {
     position: relative;
-    /* Scale to fit both axes: as large as possible without exceeding either
-       the panel width or the panel height. */
-    aspect-ratio: 875 / 710;
+    /* aspect-ratio is set dynamically via inline style per track */
     max-width: 100%;
     max-height: 100%;
     width: auto;
     height: auto;
+    overflow: hidden;
+    user-select: none;
 }
 
-.track-map img {
+/* Inner wrapper receives the CSS transform for zoom/pan */
+.track-map-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.track-map-inner img {
     width: 100%;
     height: 100%;
     display: block;
     opacity: 0.5;
+    pointer-events: none;
 }
 
-.track-map svg {
+.track-map-inner svg {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
+    overflow: visible;
+}
+
+/* ── Driver pins — fixed screen-pixel sizes via CSS geometry properties ── */
+
+.driver-pin .pin-circle {
+    r: 12px;
+    stroke: #fff;
+    stroke-width: 1.5px;
+    opacity: 0.92;
+}
+
+.driver-pin .pin-glow {
+    r: 18px;
+    fill: var(--pin-color, #fff);
+    opacity: 0.35;
+    filter: blur(4px);
+}
+
+.driver-pin.selected .pin-circle {
+    r: 14px;
+    stroke: #fff;
+    stroke-width: 2.5px;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px var(--pin-color, #fff));
+}
+
+.driver-pin .pin-pos {
+    font-size: 11px;
+    font-weight: 800;
+    font-family: sans-serif;
+    fill: #fff;
+    pointer-events: none;
+}
+
+.driver-pin .pin-name {
+    font-size: 11px;
+    font-family: sans-serif;
+    fill: #ddd;
+    pointer-events: none;
+    transform: translate(18px, 5px);
+}
+
+.driver-pin.selected .pin-name {
+    fill: #fff;
+    font-weight: 700;
 }

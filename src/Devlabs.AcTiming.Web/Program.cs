@@ -2,6 +2,7 @@ using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Web.Components;
 using Devlabs.AcTiming.Web.Hubs;
+using Devlabs.AcTiming.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,7 @@ builder.Services.AddSignalR();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<TimingHubNotifier>();
+builder.Services.AddSingleton<TrackMapService>();
 
 var app = builder.Build();
 

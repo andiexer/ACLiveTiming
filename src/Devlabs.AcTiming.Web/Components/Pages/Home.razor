@@ -44,17 +44,30 @@
     </div>
 
     <!-- ── Two-column grid ───────────────────────────────────────────────── -->
+    @{
+        var sorted = _leaderboard
+            .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
+            .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
+            .ToList();
+        var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
+        var overallBest = sorted
+            .Where(d => d.BestLapTimeMs is not null and not 0)
+            .Min(d => (int?)d.BestLapTimeMs);
+    }
     <div class="timing-grid">
 
         <!-- Left column: map + events -->
         <div class="left-col">
 
             <div class="panel map-panel">
-                <div class="panel-header">Map</div>
+                <div class="panel-header">
+                    <span>Map</span>
+                    <button class="map-expand-btn" @onclick="() => _mapFullscreen = true" title="Fullscreen map">⤢</button>
+                </div>
                 <div class="map-body">
-                    @if (_leaderboard.Count > 0)
+                    @if (sorted.Count > 0)
                     {
-                        <TrackMap Drivers="_leaderboard" />
+                        <TrackMap Drivers="sorted" TrackName="@(_session?.TrackName)" TrackConfig="@(_session?.TrackConfig)" SelectedCarId="_selectedCarId" />
                     }
                     else
                     {
@@ -88,19 +101,9 @@
         <!-- Right column: leaderboard + selected driver -->
         <div class="right-col">
 
-            @{
-                var sorted = _leaderboard
-                    .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
-                    .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
-                    .ToList();
-                var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
-                var overallBest = sorted
-                    .Where(d => d.BestLapTimeMs is not null and not 0)
-                    .Min(d => (int?)d.BestLapTimeMs);
-            }
             <div class="panel leaderboard-panel">
                 <div class="leaderboard-scroll">
-                    @if (_leaderboard.Count == 0)
+                    @if (sorted.Count == 0)
                     {
                         <span class="panel-empty">No drivers on track</span>
                     }
@@ -134,7 +137,7 @@
                                         @onclick="() => SelectDriver(driver.CarId)">
                                         <td class="pos">@(i + 1)</td>
                                         <td class="driver-name">
-                                            <span class="driver-dot" style="background-color: @GetDriverColor(driver.CarId)"></span>@driver.DriverName
+                                            <span class="driver-pos-bubble" style="background-color: @GetDriverColor(driver.CarId)">@driver.CarId</span>@driver.DriverName
                                         </td>
                                         <td class="car-name">
                                             <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver" ShowLabel/>
@@ -176,15 +179,25 @@
                     <div class="panel driver-panel">
 
                         <!-- Driver identity -->
+                        @{ var selPos = sorted.FindIndex(d => d.CarId == sel.CarId) + 1; }
                         <div class="driver-panel-header">
+                            <div class="dph-pos">
+                                <span class="dph-pos-number">@selPos</span>
+                                <span class="dph-pos-label">POS</span>
+                            </div>
                             <div class="driver-panel-identity">
-                                <span class="driver-dot large-dot" style="background-color: @GetDriverColor(sel.CarId)"></span>
+                                <span class="driver-pos-bubble driver-pos-bubble-lg" style="background-color: @GetDriverColor(sel.CarId)">@sel.CarId</span>
                                 <div>
                                     <div class="driver-panel-name">@sel.DriverName</div>
-                                    <div class="driver-panel-car">
-                                        <CarBrandIcon Model="@sel.CarModel" Resolver="CarBrandResolver" ShowLabel="true" />
+                                    <div class="driver-panel-meta">
+                                        <span class="driver-panel-meta-item @(sel.IsConnected ? "status-connected" : "status-disconnected")">
+                                            @(sel.IsConnected ? "On track" : "Disconnected")
+                                        </span>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="driver-panel-brand-badge">
+                                <CarBrandIcon Model="@sel.CarModel" Resolver="CarBrandResolver" ShowLabel Large />
                             </div>
                             <button class="close-btn" @onclick="ClearSelection" title="Close">✕</button>
                         </div>
@@ -245,6 +258,16 @@
 
         </div>
     </div>
+
+    @if (_mapFullscreen)
+    {
+        <div class="map-fullscreen-overlay" @onclick="() => _mapFullscreen = false">
+            <div class="map-fullscreen-inner" @onclick:stopPropagation>
+                <button class="map-fullscreen-close" @onclick="() => _mapFullscreen = false" title="Close">✕</button>
+                <TrackMap Drivers="sorted" TrackName="@(_session?.TrackName)" TrackConfig="@(_session?.TrackConfig)" SelectedCarId="_selectedCarId" />
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -256,6 +279,9 @@
     private PeriodicTimer? _tickTimer;
     private CancellationTokenSource? _tickCts;
     private bool _showInterval;
+
+    // ── Map fullscreen ─────────────────────────────────────────────────────
+    private bool _mapFullscreen;
 
     // ── Driver selection ──────────────────────────────────────────────────
     private int? _selectedCarId;
@@ -269,10 +295,10 @@
 
     // ── Events log ────────────────────────────────────────────────────────
     private enum EventKind { SessionStart, SessionEnd, Join, Disconnect, Collision }
-    private record TimingEvent(EventKind Kind, string Message, DateTime Timestamp);
+    private record TimingEvent(EventKind Kind, MarkupString Message, DateTime Timestamp);
     private readonly List<TimingEvent> _events = [];
 
-    private void AddEvent(EventKind kind, string message)
+    private void AddEvent(EventKind kind, MarkupString message)
     {
         _events.Insert(0, new TimingEvent(kind, message, DateTime.UtcNow));
         if (_events.Count > 10)
@@ -298,12 +324,12 @@
                 if (session is not null)
                 {
                     _sessionStartedAt = DateTime.UtcNow - TimeSpan.FromMilliseconds(session.ElapsedMs);
-                    AddEvent(EventKind.SessionStart, $"Session started — {session.TrackName}");
+                    AddEvent(EventKind.SessionStart, (MarkupString)$"Session started — {session.TrackName}");
                 }
                 else
                 {
                     _sessionStartedAt = null;
-                    AddEvent(EventKind.SessionEnd, "Session ended");
+                    AddEvent(EventKind.SessionEnd, (MarkupString)"Session ended");
                 }
                 StateHasChanged();
             });
@@ -328,7 +354,7 @@
                 else
                 {
                     _leaderboard.Add(driver);
-                    AddEvent(EventKind.Join, $"{driver.DriverName} joined");
+                    AddEvent(EventKind.Join, (MarkupString)$"{driver.DriverName} joined");
                 }
                 StateHasChanged();
             });
@@ -341,7 +367,7 @@
                 var name = _leaderboard.FirstOrDefault(d => d.CarId == carId)?.DriverName ?? $"Car #{carId}";
                 _leaderboard.RemoveAll(d => d.CarId == carId);
                 if (_selectedCarId == carId) _selectedCarId = null;
-                AddEvent(EventKind.Disconnect, $"{name} disconnected");
+                AddEvent(EventKind.Disconnect, (MarkupString)$"{name} disconnected");
                 StateHasChanged();
             });
         });
@@ -353,7 +379,7 @@
                 _incidents.Insert(0, evt);
                 if (_incidents.Count > 50)
                     _incidents.RemoveAt(_incidents.Count - 1);
-                AddEvent(EventKind.Collision, FormatIncident(evt));
+                AddEvent(EventKind.Collision, FormatIncidentMarkup(evt));
                 StateHasChanged();
             });
         });
@@ -383,15 +409,23 @@
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     // ── Formatting helpers ─────────────────────────────────────────────────
-    private string FormatIncident(CollisionEvent evt)
+    private MarkupString FormatIncidentMarkup(CollisionEvent evt)
     {
-        var driver = GetDriverName(evt.CarId);
-        return evt.Type switch
+        var dot1 = DriverDotHtml(evt.CarId);
+        var name1 = GetDriverName(evt.CarId);
+
+        if (evt.Type == CollisionType.Car && evt.OtherCarId.HasValue)
         {
-            CollisionType.Car => $"{driver} ↔ {GetDriverName(evt.OtherCarId!.Value)} — {evt.ImpactSpeedKmh:F0} km/h",
-            _ => $"{driver} environment crash — {evt.ImpactSpeedKmh:F0} km/h"
-        };
+            var dot2 = DriverDotHtml(evt.OtherCarId.Value);
+            var name2 = GetDriverName(evt.OtherCarId.Value);
+            return (MarkupString)$"{dot1}{name1} ↔ {dot2}{name2} — {evt.ImpactSpeedKmh:F0} km/h";
+        }
+
+        return (MarkupString)$"{dot1}{name1} environment crash — {evt.ImpactSpeedKmh:F0} km/h";
     }
+
+    private string DriverDotHtml(int carId) =>
+        $"<span class=\"driver-dot\" style=\"background-color:{GetDriverColor(carId)}\"></span>";
 
     private string GetDriverName(int carId) =>
         _leaderboard.FirstOrDefault(d => d.CarId == carId)?.DriverName ?? $"Car #{carId}";

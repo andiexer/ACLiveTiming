@@ -6,7 +6,7 @@
 
 @if (car is not null)
 {
-    <span class="car-brand" title="@Model">
+    <span class="car-brand @(Large ? "brand-large" : "")" title="@Model">
         <img class="brand-icon"
              src="https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/@(car.Slug).png"
              alt="@car.Model"
@@ -19,7 +19,7 @@
 }
 else
 {
-    <span class="car-brand car-brand-unknown" title="@Model">@Model</span>
+    <span class="car-brand @(Large ? "brand-large" : "") car-brand-unknown" title="@Model">@Model</span>
 }
 
 @code {
@@ -28,4 +28,7 @@ else
 
     /// <summary>When true, renders the raw model name alongside the icon (e.g. in the driver panel).</summary>
     [Parameter] public bool ShowLabel { get; set; }
+
+    /// <summary>When true, renders a larger icon suited for the driver detail panel header.</summary>
+    [Parameter] public bool Large { get; set; }
 }

@@ -1,34 +1,89 @@
 @using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Web.Services
 @namespace Devlabs.AcTiming.Web.Components.Features.LiveTiming
+@inject TrackMapService MapService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div class="track-map">
-    <img src="map.png" alt="Track Map" />
-    <svg viewBox="0 0 @ImageWidth @ImageHeight">
-        @foreach (var driver in Drivers)
-        {
-            var px = (driver.WorldX + XOffset) * ScaleFactor;
-            var py = (driver.WorldZ + ZOffset) * ScaleFactor;
-            var color = GetDriverColor(driver.CarId);
+@if (_config is null)
+{
+    <div class="track-map-unavailable">Map not available for this track.</div>
+}
+else
+{
+    <div class="track-map" style="aspect-ratio: @_config.PixelWidth / @_config.PixelHeight" @ref="_mapRef">
+        <div class="track-map-inner">
+            @if (_config.HasImage)
+            {
+                <img src="maps/@FullTrackName/map.png" alt="Track Map" />
+            }
+            <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight">
+                @{
+                    var nonSelected = Drivers.Where(d => d.CarId != SelectedCarId).ToList();
+                    var selectedDriver = SelectedCarId is not null ? Drivers.FirstOrDefault(d => d.CarId == SelectedCarId) : null;
+                    var renderOrder = selectedDriver is not null
+                        ? nonSelected.Concat([selectedDriver]).ToList()
+                        : nonSelected;
+                }
+                @for (var i = 0; i < renderOrder.Count; i++)
+                {
+                    var driver = renderOrder[i];
+                    var pos = Drivers.ToList().IndexOf(driver) + 1;
+                    var px = (driver.WorldX + _config.XOffset) / _config.ScaleFactor;
+                    var py = (driver.WorldZ + _config.ZOffset) / _config.ScaleFactor;
+                    var color = GetDriverColor(driver.CarId);
+                    var pxStr = px.ToString("F1");
+                    var pyStr = py.ToString("F1");
+                    var isSelected = driver.CarId == SelectedCarId;
+                    var pinClass = isSelected ? "driver-pin selected" : "driver-pin";
 
-            <circle cx="@px.ToString("F1")" cy="@py.ToString("F1")" r="14" fill="@color" stroke="#fff" stroke-width="2" opacity="0.9">
-                <title>@driver.DriverName — @driver.SpeedKmh.ToString("F0") km/h</title>
-            </circle>
-            @((MarkupString)$"<text x=\"{(px + 18):F1}\" y=\"{(py + 5):F1}\" fill=\"#fff\" font-size=\"13\" font-weight=\"bold\" font-family=\"sans-serif\">{driver.DriverName}</text>")
-        }
-    </svg>
-</div>
+                    <g class="@pinClass" transform="translate(@pxStr, @pyStr)" style="--pin-color: @color">
+                        <title>@driver.DriverName — @driver.SpeedKmh.ToString("F0") km/h</title>
+                        @if (isSelected)
+                        {
+                            <circle class="pin-glow" cx="0" cy="0" />
+                        }
+                        <circle class="pin-circle" cx="0" cy="0" fill="@color" />
+                        <text class="pin-pos" x="0" y="0" text-anchor="middle" dominant-baseline="central">@pos</text>
+                        <text class="pin-name" x="0" y="0">@driver.DriverName</text>
+                    </g>
+                }
+            </svg>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public IReadOnlyList<LiveDriverEntry> Drivers { get; set; } = [];
+    [Parameter] public string? TrackName { get; set; }
+    [Parameter] public string? TrackConfig { get; set; }
+    [Parameter] public int? SelectedCarId { get; set; }
 
-    // Map parameters from map.ini
-    private const float XOffset = 377.507f;
-    private const float ZOffset = 888.612f;
-    private const float ScaleFactor = 1f;
+    private TrackMapConfig? _config;
+    private ElementReference _mapRef;
+    private IJSObjectReference? _mapJs;
 
-    // Actual PNG pixel dimensions (viewBox must match these exactly)
-    private const int ImageWidth = 875;
-    private const int ImageHeight = 710;
+    private string? FullTrackName => string.IsNullOrEmpty(TrackName) ? null : $"{TrackName}/{TrackConfig}";
+
+    protected override void OnParametersSet()
+    {
+        _config = MapService.GetConfig(TrackName, TrackConfig);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _config is not null)
+        {
+            _mapJs = await JS.InvokeAsync<IJSObjectReference>("import", "/js/trackMap.js");
+            await _mapJs.InvokeVoidAsync("init", _mapRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_mapJs is not null)
+            await _mapJs.DisposeAsync();
+    }
 
     private static readonly string[] Colors =
     [

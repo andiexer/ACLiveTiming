@@ -5,11 +5,17 @@
 }
 
 .brand-icon {
-    height: 20px;
-    width: auto;
-    max-width: 40px;
+    /* Fixed slot so every logo occupies the same width → text always starts at the same position */
+    box-sizing: content-box;
+    width: 32px;
+    height: 16px;
     object-fit: contain;
+    /* White pill makes dark logos visible on the dark background */
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 3px;
+    padding: 2px 3px;
     vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .brand-label {
@@ -20,4 +26,24 @@
 .car-brand-unknown {
     font-size: 0.78rem;
     color: var(--text-secondary);
+}
+
+/* ── Large variant (driver detail panel header) ─────────────────────────── */
+.brand-large {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.brand-large .brand-icon {
+    width: 72px;
+    height: 36px;
+}
+
+.brand-large .brand-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
 }
