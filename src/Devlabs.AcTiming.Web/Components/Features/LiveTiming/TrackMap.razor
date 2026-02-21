@@ -15,7 +15,7 @@ else
         @if (_config.HasImage)
         {
             <div class="track-map-img-wrap">
-                <img src="maps/@FullTrackName/map.png" alt="Track Map" />
+                <img src="maps/@_config.FullTrackName/map.png" alt="Track Map" />
             </div>
         }
         <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight"
@@ -63,8 +63,6 @@ else
     private TrackMapConfig? _config;
     private ElementReference _mapRef;
     private IJSObjectReference? _mapJs;
-
-    private string? FullTrackName => string.IsNullOrEmpty(TrackName) ? null : $"{TrackName}/{TrackConfig}";
 
     protected override void OnParametersSet()
     {

@@ -6,14 +6,15 @@ namespace Devlabs.AcTiming.Application.LiveTiming;
 
 /// <summary>
 /// Subscribes to raw AC UDP events and applies application-level business logic
-/// (stale-data recovery, best-lap calculation, leaderboard merging) before
-/// updating the in-memory live timing state.
+/// (stale-data recovery, best-lap calculation, leaderboard merging, sector timing)
+/// before updating the in-memory live timing state.
 /// </summary>
 public sealed class AcServerEventProcessor
 {
     private readonly IAcUdpClient _udpClient;
     private readonly ILiveTimingService _liveTimingService;
     private readonly ILogger<AcServerEventProcessor> _logger;
+    private readonly SectorTimingTracker _sectorTracker = new();
 
     public AcServerEventProcessor(
         IAcUdpClient udpClient,
@@ -35,12 +36,14 @@ public sealed class AcServerEventProcessor
     private void OnSessionStarted(object? sender, LiveSessionInfo session)
     {
         _logger.LogInformation("Session started: {Track} ({Type})", session.TrackName, session.SessionType);
+        _sectorTracker.ResetAll();
         _liveTimingService.UpdateSession(session);
     }
 
     private void OnSessionEnded(object? sender, EventArgs _)
     {
         _logger.LogInformation("Session ended");
+        _sectorTracker.ResetAll();
         _liveTimingService.ClearSession();
     }
 
@@ -53,6 +56,7 @@ public sealed class AcServerEventProcessor
     private void OnDriverDisconnected(object? sender, int carId)
     {
         _logger.LogInformation("Driver disconnected: Car {CarId}", carId);
+        _sectorTracker.ResetCar(carId);
         _liveTimingService.RemoveDriver(carId);
     }
 
@@ -70,6 +74,20 @@ public sealed class AcServerEventProcessor
             }
 
             _liveTimingService.UpdateDriverTelemetry(telemetry);
+
+            // Check for sector boundary crossing and update live sector display
+            var crossing = _sectorTracker.ProcessUpdate(telemetry.CarId, telemetry.SplinePosition);
+            if (crossing is not null)
+            {
+                var driver = _liveTimingService.GetDriver(telemetry.CarId);
+                if (driver is not null)
+                {
+                    _liveTimingService.UpdateDriver(driver with
+                    {
+                        LastSectorTimesMs = crossing.CompletedSectors
+                    });
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -88,12 +106,21 @@ public sealed class AcServerEventProcessor
                 ? evt.LapTimeMs
                 : driver.BestLapTimeMs;
 
+            var sectors = _sectorTracker.OnLapCompleted(evt.CarId, evt.LapTimeMs);
+            var lastSectors = sectors?.ToList() ?? driver.LastSectorTimesMs;
+            // Only update personal-best sectors on clean laps (no cuts)
+            var bestSectors = sectors is not null && evt.Cuts == 0
+                ? UpdateBestSectors(driver.BestSectorTimesMs, sectors)
+                : driver.BestSectorTimesMs;
+
             _liveTimingService.UpdateDriver(driver with
             {
                 LastLapTimeMs = evt.LapTimeMs,
                 BestLapTimeMs = bestLap,
                 TotalLaps = driver.TotalLaps + 1,
-                LastLapCuts = evt.Cuts
+                LastLapCuts = evt.Cuts,
+                LastSectorTimesMs = lastSectors,
+                BestSectorTimesMs = bestSectors
             });
         }
 
@@ -106,17 +133,28 @@ public sealed class AcServerEventProcessor
                 var leaderboardBest = entry.BestLapTimeMs > 0 ? entry.BestLapTimeMs : (int?)null;
                 var mergedBest = (leaderboardBest, entryDriver.BestLapTimeMs) switch
                 {
-                    (null, _)               => entryDriver.BestLapTimeMs,
-                    (_, null)               => leaderboardBest,
-                    var (lb, eb)            => Math.Min(lb!.Value, eb!.Value)
+                    (null, _)    => entryDriver.BestLapTimeMs,
+                    (_, null)    => leaderboardBest,
+                    var (lb, eb) => Math.Min(lb.Value, eb.Value)
                 };
                 _liveTimingService.UpdateDriver(entryDriver with
                 {
                     Position = i + 1,
                     BestLapTimeMs = mergedBest,
-                    TotalLaps = entry.TotalLaps
                 });
             }
         }
+    }
+
+    private static List<int> UpdateBestSectors(List<int> existing, int[] newSectors)
+    {
+        var result = new List<int>(3);
+        for (var i = 0; i < 3; i++)
+        {
+            var current = newSectors[i];
+            var best = existing.Count > i ? existing[i] : int.MaxValue;
+            result.Add(Math.Min(current, best));
+        }
+        return result;
     }
 }

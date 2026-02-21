@@ -291,6 +291,7 @@
 .leaderboard-scroll {
     flex: 1;
     overflow-y: auto;
+    overflow-x: auto;
     min-height: 0;
 }
 
@@ -305,7 +306,7 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    padding: 0.42rem 0.7rem;
+    padding: 0.3rem 0.5rem;
     text-align: left;
     font-size: 0.63rem;
     font-weight: 700;
@@ -318,7 +319,7 @@
 }
 
 .timing-table td {
-    padding: 0.42rem 0.7rem;
+    padding: 0.3rem 0.5rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -375,6 +376,21 @@
 .timing-table .gap {
     font-family: var(--font-mono);
     color: var(--text-secondary);
+}
+
+.timing-table .sector-th {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.timing-table .sector-td {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    white-space: nowrap;
 }
 
 .timing-table .driver-row {

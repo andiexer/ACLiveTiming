@@ -53,6 +53,13 @@
         var overallBest = sorted
             .Where(d => d.BestLapTimeMs is not null and not 0)
             .Min(d => (int?)d.BestLapTimeMs);
+        // Fastest sector time across all drivers for each sector (for purple highlight)
+        var overallBestSectors = Enumerable.Range(0, 3)
+            .Select(s => sorted
+                .Where(d => d.BestSectorTimesMs.Count > s && d.BestSectorTimesMs[s] > 0)
+                .Select(d => (int?)d.BestSectorTimesMs[s])
+                .Min())
+            .ToArray();
     }
     <div class="timing-grid">
 
@@ -117,6 +124,9 @@
                                     <th>Car</th>
                                     <th>Best Lap</th>
                                     <th title="Most recent completed lap. Red = invalid (corner cut).">Last Lap</th>
+                                    <th class="sector-th" title="Sector 1 time (last lap)">S1</th>
+                                    <th class="sector-th" title="Sector 2 time (last lap)">S2</th>
+                                    <th class="sector-th" title="Sector 3 time (last lap)">S3</th>
                                     <th title="Delta to personal best">Δ</th>
                                     <th>Laps</th>
                                     <th>
@@ -140,7 +150,7 @@
                                             <span class="driver-pos-bubble" style="background-color: @GetDriverColor(driver.CarId)">@driver.CarId</span>@driver.DriverName
                                         </td>
                                         <td class="car-name">
-                                            <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver" ShowLabel/>
+                                            <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver" />
                                         </td>
                                         <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
                                         <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
@@ -150,6 +160,9 @@
                                                 <span class="cuts-badge" title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
                                             }
                                         </td>
+                                        <td class="sector-td @GetSectorColorClass(driver, 0, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 0)</td>
+                                        <td class="sector-td @GetSectorColorClass(driver, 1, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 1)</td>
+                                        <td class="sector-td @GetSectorColorClass(driver, 2, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 2)</td>
                                         <td class="laptime @GetDeltaColorClass(driver)">@FormatDelta(driver)</td>
                                         <td>@driver.TotalLaps</td>
                                         <td class="gap">
@@ -241,6 +254,11 @@
                             <div class="dp-stat-row">
                                 <span class="dp-stat-label">Best all-time (car)</span>
                                 <span class="dp-stat-value placeholder">—</span>
+                            </div>
+                            <div class="dp-stat-row">
+                                <span class="dp-stat-label">Possible best</span>
+                                @{ var possibleBest = PossibleBestLap(sel); }
+                                <span class="dp-stat-value @(possibleBest is null ? "placeholder" : "")">@FormatLapTime(possibleBest)</span>
                             </div>
                             <div class="dp-stat-row">
                                 <span class="dp-stat-label">Total laps</span>
@@ -494,6 +512,32 @@
         if (overallBest is not null && driver.LastLapTimeMs == overallBest) return "lap-purple";
         if (driver.BestLapTimeMs is not null && driver.LastLapTimeMs == driver.BestLapTimeMs) return "lap-green";
         return "lap-yellow";
+    }
+
+    private static string FormatSectorTime(List<int> sectors, int index)
+    {
+        if (sectors.Count <= index || sectors[index] <= 0) return "—";
+        var ts = TimeSpan.FromMilliseconds(sectors[index]);
+        return ts.Minutes > 0
+            ? $"{ts.Minutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}"
+            : $"{ts.Seconds}.{ts.Milliseconds:D3}";
+    }
+
+    private static string GetSectorColorClass(LiveDriverEntry driver, int index, int?[] overallBestSectors)
+    {
+        if (driver.LastSectorTimesMs.Count <= index || driver.LastSectorTimesMs[index] <= 0) return "";
+        var sectorTime = driver.LastSectorTimesMs[index];
+        if (overallBestSectors.Length > index && overallBestSectors[index] is not null && sectorTime <= overallBestSectors[index])
+            return "lap-purple";
+        if (driver.BestSectorTimesMs.Count > index && sectorTime <= driver.BestSectorTimesMs[index])
+            return "lap-green";
+        return "lap-yellow";
+    }
+
+    private static int? PossibleBestLap(LiveDriverEntry driver)
+    {
+        if (driver.BestSectorTimesMs.Count < 3 || driver.BestSectorTimesMs.Any(s => s <= 0)) return null;
+        return driver.BestSectorTimesMs[0] + driver.BestSectorTimesMs[1] + driver.BestSectorTimesMs[2];
     }
 
     private static string GetDeltaColorClass(LiveDriverEntry driver)

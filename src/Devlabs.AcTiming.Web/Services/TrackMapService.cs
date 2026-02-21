@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
-using Microsoft.AspNetCore.Hosting;
+using Devlabs.AcTiming.Domain.Shared;
 
 namespace Devlabs.AcTiming.Web.Services;
 
@@ -25,12 +25,15 @@ public sealed class TrackMapService
 
         var fullSlug = string.IsNullOrWhiteSpace(trackConfig) ? trackName : $"{trackName}/{trackConfig}";
 
-        return _cache.GetOrAdd(fullSlug, LoadConfig(fullSlug));
+        return _cache.GetOrAdd(fullSlug, LoadConfig(trackName, trackConfig));
     }
 
-    private TrackMapConfig? LoadConfig(string slug)
+    private TrackMapConfig? LoadConfig(string trackName, string? trackConfig)
     {
-        var iniPath = Path.Combine(_mapsRoot, slug, "map.ini");
+        var sanitizedTrackName = trackName.Split("/")[^1];
+        var fullSlug = string.IsNullOrWhiteSpace(trackConfig) ? sanitizedTrackName : $"{sanitizedTrackName}/{trackConfig}";
+
+        var iniPath = Path.Combine(_mapsRoot, fullSlug, "map.ini");
         if (!File.Exists(iniPath))
             return null;
 
@@ -49,13 +52,15 @@ public sealed class TrackMapService
         var zOffset     = Get("Z_OFFSET",     0f);
         var margin      = Get("MARGIN",       0f);
         var drawingSize = (int)Get("DRAWING_SIZE", 10f);
-        var hasImage    = File.Exists(Path.Combine(_mapsRoot, slug, "map.png"));
+        var hasImage    = File.Exists(Path.Combine(_mapsRoot, fullSlug, "map.png"));
 
-        return new TrackMapConfig(width, height, scale, xOffset, zOffset, margin, drawingSize, hasImage);
+        return new TrackMapConfig(sanitizedTrackName, trackConfig, width, height, scale, xOffset, zOffset, margin, drawingSize, hasImage);
     }
 }
 
 public sealed record TrackMapConfig(
+    string TrackName,
+    string? TrackConfig,
     float Width,
     float Height,
     float ScaleFactor,
@@ -71,4 +76,5 @@ public sealed record TrackMapConfig(
     // (AC's map renderer adds MARGIN pixels of padding around the track content)
     public int PixelWidth  => (int)Math.Round(Width);
     public int PixelHeight => (int)Math.Round(Height);
+    public string FullTrackName => string.IsNullOrEmpty(TrackConfig) ? TrackName : $"{TrackName}/{TrackConfig}";
 }

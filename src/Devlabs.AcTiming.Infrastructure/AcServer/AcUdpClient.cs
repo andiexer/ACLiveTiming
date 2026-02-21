@@ -202,6 +202,11 @@ public class AcUdpClient : IAcUdpClient
                 case AcProtocol.ClientEvent:
                     HandleClientEvent(data);
                     break;
+                case AcProtocol.LapSplit:
+                    _logger.LogInformation("LapSplit raw ({Len} bytes): {Hex}",
+                        data.Length,
+                        Convert.ToHexString(data));
+                    break;
                 default:
                     _logger.LogDebug("Unhandled packet type: {PacketType}", packetType);
                     break;
@@ -263,8 +268,8 @@ public class AcUdpClient : IAcUdpClient
         var update = AcPacketParser.ParseCarUpdate(data);
         var v = update.Velocity;
         var speedKmh = MathF.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z) * 3.6f;
-        _logger.LogDebug("CarUpdate: CarId={CarId} Pos=({X:F1},{Y:F1},{Z:F1}) Gear={Gear} RPM={Rpm} Spline={Spline:F4} Speed={Speed:F1}km/h",
-            update.CarId, update.Position.X, update.Position.Y, update.Position.Z, update.Gear, update.EngineRpm, update.NormalizedSplinePos, speedKmh);
+        /*_logger.LogDebug("CarUpdate: CarId={CarId} Pos=({X:F1},{Y:F1},{Z:F1}) Gear={Gear} RPM={Rpm} Spline={Spline:F4} Speed={Speed:F1}km/h",
+            update.CarId, update.Position.X, update.Position.Y, update.Position.Z, update.Gear, update.EngineRpm, update.NormalizedSplinePos, speedKmh);*/
 
         var telemetry = new DriverTelemetry
         {

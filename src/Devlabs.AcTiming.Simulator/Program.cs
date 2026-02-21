@@ -142,7 +142,7 @@ try
             for (var j = 0; j < count; j++)
                 pkt .WriteByte((byte)j)
                     .WriteUInt32((uint)bestLapMs[j])
-                    .WriteByte((byte)Math.Min(lapCounts[j], 255));
+                    .WriteUInt16((ushort)lapCounts[j]);
 
             pkt.WriteByte(98); // grip level
             await Send(pkt);
