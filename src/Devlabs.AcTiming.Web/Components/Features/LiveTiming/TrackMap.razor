@@ -11,45 +11,46 @@
 }
 else
 {
-    <div class="track-map" style="aspect-ratio: @_config.PixelWidth / @_config.PixelHeight" @ref="_mapRef">
-        <div class="track-map-inner">
-            @if (_config.HasImage)
-            {
+    <div class="track-map" @ref="_mapRef">
+        @if (_config.HasImage)
+        {
+            <div class="track-map-img-wrap">
                 <img src="maps/@FullTrackName/map.png" alt="Track Map" />
+            </div>
+        }
+        <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight"
+             preserveAspectRatio="xMidYMid meet">
+            @{
+                var nonSelected = Drivers.Where(d => d.CarId != SelectedCarId).ToList();
+                var selectedDriver = SelectedCarId is not null ? Drivers.FirstOrDefault(d => d.CarId == SelectedCarId) : null;
+                var renderOrder = selectedDriver is not null
+                    ? nonSelected.Concat([selectedDriver]).ToList()
+                    : nonSelected;
             }
-            <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight">
-                @{
-                    var nonSelected = Drivers.Where(d => d.CarId != SelectedCarId).ToList();
-                    var selectedDriver = SelectedCarId is not null ? Drivers.FirstOrDefault(d => d.CarId == SelectedCarId) : null;
-                    var renderOrder = selectedDriver is not null
-                        ? nonSelected.Concat([selectedDriver]).ToList()
-                        : nonSelected;
-                }
-                @for (var i = 0; i < renderOrder.Count; i++)
-                {
-                    var driver = renderOrder[i];
-                    var pos = Drivers.ToList().IndexOf(driver) + 1;
-                    var px = (driver.WorldX + _config.XOffset) / _config.ScaleFactor;
-                    var py = (driver.WorldZ + _config.ZOffset) / _config.ScaleFactor;
-                    var color = GetDriverColor(driver.CarId);
-                    var pxStr = px.ToString("F1");
-                    var pyStr = py.ToString("F1");
-                    var isSelected = driver.CarId == SelectedCarId;
-                    var pinClass = isSelected ? "driver-pin selected" : "driver-pin";
+            @for (var i = 0; i < renderOrder.Count; i++)
+            {
+                var driver = renderOrder[i];
+                var pos = Drivers.ToList().IndexOf(driver) + 1;
+                var px = (driver.WorldX + _config.XOffset) / _config.ScaleFactor;
+                var py = (driver.WorldZ + _config.ZOffset) / _config.ScaleFactor;
+                var color = GetDriverColor(driver.CarId);
+                var pxStr = px.ToString("F1");
+                var pyStr = py.ToString("F1");
+                var isSelected = driver.CarId == SelectedCarId;
+                var pinClass = isSelected ? "driver-pin selected" : "driver-pin";
 
-                    <g class="@pinClass" transform="translate(@pxStr, @pyStr)" style="--pin-color: @color">
-                        <title>@driver.DriverName — @driver.SpeedKmh.ToString("F0") km/h</title>
-                        @if (isSelected)
-                        {
-                            <circle class="pin-glow" cx="0" cy="0" />
-                        }
-                        <circle class="pin-circle" cx="0" cy="0" fill="@color" />
-                        <text class="pin-pos" x="0" y="0" text-anchor="middle" dominant-baseline="central">@pos</text>
-                        <text class="pin-name" x="0" y="0">@driver.DriverName</text>
-                    </g>
-                }
-            </svg>
-        </div>
+                <g class="@pinClass" transform="translate(@pxStr, @pyStr)" style="--pin-color: @color">
+                    <title>@driver.DriverName — @driver.SpeedKmh.ToString("F0") km/h</title>
+                    @if (isSelected)
+                    {
+                        <circle class="pin-glow" cx="0" cy="0" />
+                    }
+                    <circle class="pin-circle" cx="0" cy="0" fill="@color" />
+                    <text class="pin-pos" x="0" y="0" text-anchor="middle" dominant-baseline="central">@pos</text>
+                    <text class="pin-name" x="0" y="0">@driver.DriverName</text>
+                </g>
+            }
+        </svg>
     </div>
 }
 
@@ -82,7 +83,10 @@ else
     public async ValueTask DisposeAsync()
     {
         if (_mapJs is not null)
+        {
+            await _mapJs.InvokeVoidAsync("dispose", _mapRef);
             await _mapJs.DisposeAsync();
+        }
     }
 
     private static readonly string[] Colors =

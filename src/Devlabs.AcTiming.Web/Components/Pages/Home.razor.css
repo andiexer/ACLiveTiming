@@ -184,12 +184,8 @@
 .map-body {
     flex: 1;
     overflow: hidden;
-    /* flex container so .track-map's max-height: 100% resolves against a definite height */
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 0.5rem;
     min-height: 0;
+    position: relative;
 }
 
 /* ── Map fullscreen overlay ─────────────────────────────────────────────── */

@@ -84,7 +84,7 @@ public sealed class AcServerEventProcessor
         var driver = _liveTimingService.GetDriver(evt.CarId);
         if (driver is not null)
         {
-            var bestLap = driver.BestLapTimeMs is null || evt.LapTimeMs < driver.BestLapTimeMs
+            var bestLap = evt.Cuts == 0 && (driver.BestLapTimeMs is null || evt.LapTimeMs < driver.BestLapTimeMs)
                 ? evt.LapTimeMs
                 : driver.BestLapTimeMs;
 
@@ -103,10 +103,17 @@ public sealed class AcServerEventProcessor
             var entryDriver = _liveTimingService.GetDriver(entry.CarId);
             if (entryDriver is not null)
             {
+                var leaderboardBest = entry.BestLapTimeMs > 0 ? entry.BestLapTimeMs : (int?)null;
+                var mergedBest = (leaderboardBest, entryDriver.BestLapTimeMs) switch
+                {
+                    (null, _)               => entryDriver.BestLapTimeMs,
+                    (_, null)               => leaderboardBest,
+                    var (lb, eb)            => Math.Min(lb!.Value, eb!.Value)
+                };
                 _liveTimingService.UpdateDriver(entryDriver with
                 {
                     Position = i + 1,
-                    BestLapTimeMs = entry.BestLapTimeMs > 0 ? entry.BestLapTimeMs : entryDriver.BestLapTimeMs,
+                    BestLapTimeMs = mergedBest,
                     TotalLaps = entry.TotalLaps
                 });
             }

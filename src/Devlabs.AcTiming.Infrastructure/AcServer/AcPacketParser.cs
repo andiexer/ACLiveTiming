@@ -128,7 +128,7 @@ public static class AcPacketParser
             {
                 CarId = reader.ReadByte(),
                 LapTimeMs = (int)reader.ReadUInt32(),
-                Laps = reader.ReadByte()
+                Laps = reader.ReadUInt16()
             });
         }
 
