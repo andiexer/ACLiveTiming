@@ -1,4 +1,4 @@
-name: 🚀 Release
+name: Release
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release-notes:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (full history + tags)
@@ -17,14 +17,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate release notes with git-cliff
-        uses: orhun/git-cliff-action@v3
-        with:
-          config: cliff.toml
-          args: --latest --strip all --output RELEASE_NOTES.md
+      - name: Set up git-cliff (binary, no Docker)
+        uses: kenji-miyake/setup-git-cliff@v1 :contentReference[oaicite:1]{index=1}
 
-      - name: Create GitHub Release (notes from feat/fix)
+      - name: Generate release notes (feat/fix only)
+        run: |
+          git-cliff --config cliff.toml --latest --strip all --output RELEASE_NOTES.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: RELEASE_NOTES.md
           name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
