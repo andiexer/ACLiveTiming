@@ -17,12 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up git-cliff (binary, no Docker)
-        uses: kenji-miyake/setup-git-cliff@v1 :contentReference[oaicite:1]{index=1}
+      - name: Set up git-cliff (binary)
+        uses: kenji-miyake/setup-git-cliff@v2
 
       - name: Generate release notes (feat/fix only)
-        run: |
-          git-cliff --config cliff.toml --latest --strip all --output RELEASE_NOTES.md
+        run: git-cliff --config cliff.toml --latest --strip all --output RELEASE_NOTES.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
