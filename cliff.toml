@@ -1,4 +1,3 @@
-# cliff.toml — generate release notes only from feat:/fix:
 [changelog]
 header = ""
 body = """
@@ -17,11 +16,16 @@ footer = ""
 [git]
 conventional_commits = true
 filter_unconventional = true
-tag_pattern = "v[0-9]*"
+tag_pattern = "v[0-9].*"
 
-# Only keep feat/fix (everything else skipped)
 commit_parsers = [
-    { message = "^feat(\\(.+\\))?:", group = "Added" },
-    { message = "^fix(\\(.+\\))?:",  group = "Fixed" },
-    { message = ".*",               skip = true },
+    { message = "^(feat|fix|refactor|chore|perf|docs|style|test)(\\(.+\\))?!:", group = "💥 Breaking Changes" },
+
+    { body = "BREAKING CHANGE:", group = "💥 Breaking Changes" },
+
+    { message = "^feat(\\(.+\\))?:", group = "🚀 Features" },
+
+    { message = "^fix(\\(.+\\))?:",  group = "🐛 Bug Fixes" },
+
+    { message = ".*", skip = true },
 ]
