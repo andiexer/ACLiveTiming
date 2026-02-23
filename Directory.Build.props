@@ -17,6 +17,6 @@
     <UseCSharpier>true</UseCSharpier>
   </PropertyGroup>
   <ItemGroup>
-    <GlobalPackageReference Include="CSharpier.MsBuild" Version="1.2.6" />
+    <GlobalPackageReference Include="CSharpier.MsBuild" Version="1.2.6" PrivateAssets="all" IncludeAssets="build;buildTransitive" />
   </ItemGroup>
 </Project>
