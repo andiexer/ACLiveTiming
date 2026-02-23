@@ -14,6 +14,9 @@
   <ItemGroup>
     <_ContentIncludedByDefault Remove="Components\Features\History\HistoryPage.razor" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Hubs\" />
+  </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

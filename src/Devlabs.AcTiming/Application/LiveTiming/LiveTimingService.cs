@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
-using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Domain.LiveTiming;
 
-namespace Devlabs.AcTiming.Infrastructure.Services;
+namespace Devlabs.AcTiming.Application.LiveTiming;
 
 public class LiveTimingService : ILiveTimingService
 {
     private readonly ConcurrentDictionary<int, LiveDriverEntry> _drivers = new();
     private LiveSessionInfo? _currentSession;
+    private readonly Lock _sessionEventsLock = new();
 
     public LiveSessionInfo? GetCurrentSession() => _currentSession;
 
@@ -23,6 +23,18 @@ public class LiveTimingService : ILiveTimingService
 
     public void UpdateDriver(LiveDriverEntry driver)
     {
+        if (!_drivers.ContainsKey(driver.CarId))
+        {
+            lock (_sessionEventsLock)
+                _currentSession?.SessionEvents.Add(
+                    new SessionEvent(
+                        DateTime.UtcNow,
+                        EventKind.Join,
+                        new DriverConnected(driver.CarId, driver.DriverName)
+                    )
+                );
+        }
+
         _drivers.AddOrUpdate(
             driver.CarId,
             driver,
@@ -89,6 +101,24 @@ public class LiveTimingService : ILiveTimingService
         {
             _drivers[carId] = driver with { IsConnected = false };
         }
+    }
+
+    public void AddCollisionEvent(CollisionEvent collision)
+    {
+        lock (_sessionEventsLock)
+            _currentSession?.SessionEvents.Add(
+                new SessionEvent(collision.OccurredAtUtc, EventKind.Collision, collision)
+            );
+
+        IncrementIncident(collision.CarId);
+        if (collision.OtherCarId.HasValue)
+            IncrementIncident(collision.OtherCarId.Value);
+    }
+
+    private void IncrementIncident(int carId)
+    {
+        if (_drivers.TryGetValue(carId, out var driver))
+            _drivers[carId] = driver with { IncidentCount = driver.IncidentCount + 1 };
     }
 
     public void ClearSession()

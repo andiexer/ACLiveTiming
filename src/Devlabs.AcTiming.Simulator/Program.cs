@@ -98,6 +98,8 @@ var lapCounts = new int[count];
 var bestLapMs = new int[count];
 var lapVariance = new int[count];
 var lapStartTick = new long[count];
+var gears = new int[count];
+var rpms = new float[count];
 
 // Spread drivers evenly around the track so the UI is instantly crowded.
 // Initialise lapStartTick so the first lap time is realistic (as if each
@@ -107,6 +109,8 @@ for (var i = 0; i < count; i++)
     splinePos[i] = i / (float)count;
     lapVariance[i] = rng.Next(-2_000, 2_000);
     lapStartTick[i] = -(long)(splinePos[i] * baseLapTimes[i] / tickMs);
+    gears[i] = 3;
+    rpms[i] = 5_000f;
 }
 
 // Rough elliptical track dimensions (metres, matches Spa-ish scale)
@@ -175,17 +179,44 @@ try
         {
             var angle = splinePos[i] * 2f * MathF.PI;
             var lapMs = baseLapTimes[i] + lapVariance[i];
-            var speed = (Rx + Rz) * MathF.PI / lapMs * 1_000f; // rough m/s
+            // Throttle 0.0 = heavy braking (corners), 1.0 = full throttle (straights)
+            // Uses full [0.0, 1.0] range so braking logic actually triggers
+            var throttle = MathF.Abs(MathF.Sin(angle * 2f));
+
+            // Speed varies with throttle: 35%–100% of top speed (corners slow right down)
+            const float TopSpeedMs = 250f / 3.6f; // ~69 m/s = 250 km/h
+            var speed = TopSpeedMs * (0.35f + 0.65f * throttle);
 
             var posX = Rx * MathF.Cos(angle);
             var posZ = Rz * MathF.Sin(angle);
             var velX = -speed * MathF.Sin(angle);
             var velZ = speed * MathF.Cos(angle);
 
-            // Gear/RPM: higher on straights (where angular speed variation is larger)
-            var throttle = 0.5f + 0.5f * MathF.Abs(MathF.Sin(angle * 2f));
-            var gear = (byte)(1 + (int)(throttle * 5f));
-            var rpm = (ushort)(3_000 + (int)(throttle * 5_000f) + rng.Next(-300, 300));
+            // RPM dynamics: ~3s to rev from idle to redline, ~2s to drop under braking
+            // At 250ms tick that's ~600 rpm/tick accel, ~900 rpm/tick brake
+            const float RpmAccel = 650f;
+            const float RpmBrake = 950f;
+            const float Redline = 7_800f;
+            const float ShiftDownRpm = 2_800f;
+            const float ShiftUpRpm = 7_500f;
+
+            var rpmDelta = throttle >= 0.45f ? RpmAccel * throttle : -RpmBrake * (1f - throttle);
+
+            rpms[i] = Math.Clamp(rpms[i] + rpmDelta, 1_200f, Redline);
+
+            if (rpms[i] >= ShiftUpRpm && gears[i] < 6)
+            {
+                gears[i]++;
+                rpms[i] = 4_200f;
+            }
+            else if (rpms[i] <= ShiftDownRpm && gears[i] > 1)
+            {
+                gears[i]--;
+                rpms[i] = 6_000f;
+            }
+
+            var gear = (byte)gears[i];
+            var rpm = (ushort)Math.Clamp(rpms[i] + rng.Next(-150, 150), 1_000, 8_000);
 
             await Send(
                 writer

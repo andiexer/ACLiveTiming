@@ -1,77 +1,65 @@
-using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Domain.LiveTiming;
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-// POC combined processor + notifier. currently hard refactoring ongoing
-// realtimeprocessor will live in application layer, and only depend on simevents + live timing service (no hub context).
-// another hosted service for hub notifications with different interval logic (e.g. session updates every 5s, driver updates every 100ms, lap updates immediately) will live in the web layer
-namespace Devlabs.AcTiming.Web.Hubs;
+namespace Devlabs.AcTiming.Application.LiveTiming;
 
 public sealed class RealTimeProcessor(
     ILogger<RealTimeProcessor> logger,
     RealtimeBus realtimeBus,
     ISimEventSource simEventSource,
-    ILiveTimingService liveTimingService,
-    IHubContext<TimingHub> hubContext
+    ILiveTimingService liveTimingService
 ) : BackgroundService
 {
     private readonly SectorTimingTracker _sectorTracker = new();
 
-    // Optional: tiny per-car throttle to avoid spamming UI (keep UI unchanged).
-    // Set to TimeSpan.Zero to disable.
-    private static readonly TimeSpan DriverUiMinInterval = TimeSpan.Zero; // e.g. TimeSpan.FromMilliseconds(100);
-    private readonly Dictionary<int, DateTimeOffset> _lastDriverUiPush = new();
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("RealTimeProcessorHubNotifier started");
+        logger.LogInformation("RealTimeProcessor started");
+        await ConsumeEventsAsync(stoppingToken);
+        logger.LogInformation("RealTimeProcessor stopped");
+    }
 
-        await foreach (var ev in realtimeBus.Reader.ReadAllAsync(stoppingToken))
+    private async Task ConsumeEventsAsync(CancellationToken ct)
+    {
+        await foreach (var ev in realtimeBus.Reader.ReadAllAsync(ct))
         {
             try
             {
                 switch (ev)
                 {
                     case LiveSessionInfo s:
-                        HandleSessionStarted(s, stoppingToken);
+                        HandleSessionStarted(s);
                         await simEventSource.SendRealtimePosIntervalAsync();
                         break;
 
-                    case LiveSessionEnded ended:
-                        HandleSessionEnded(ended, stoppingToken);
+                    case LiveSessionEnded:
+                        HandleSessionEnded();
                         break;
 
                     case LiveDriverEntry d:
-                        HandleDriverConnected(d, stoppingToken);
+                        HandleDriverConnected(d);
                         break;
 
                     case DriverDisconnected d:
-                        await HandleDriverDisconnectedAsync(d, stoppingToken);
+                        HandleDriverDisconnected(d);
                         break;
 
                     case DriverTelemetry t:
-                        await HandleDriverTelemetryAsync(t, stoppingToken);
+                        await HandleDriverTelemetryAsync(t);
                         break;
 
                     case LapCompletedEvent l:
-                        await HandleLapCompletedAsync(l, stoppingToken);
+                        HandleLapCompleted(l);
                         break;
 
                     case CollisionEvent c:
-                        await hubContext.Clients.All.SendAsync(
-                            TimingHubMethods.CollisionOccurred,
-                            c,
-                            stoppingToken
-                        );
-                        break;
-
-                    default:
-                        // unknown/ignored event type
+                        liveTimingService.AddCollisionEvent(c);
                         break;
                 }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 break;
             }
@@ -80,75 +68,45 @@ public sealed class RealTimeProcessor(
                 logger.LogError(ex, "Error handling realtime event {EventType}", ev.GetType().Name);
             }
         }
-
-        logger.LogInformation("RealTimeProcessorHubNotifier stopped");
     }
 
-    private void HandleSessionStarted(LiveSessionInfo session, CancellationToken ct)
+    private void HandleSessionStarted(LiveSessionInfo session)
     {
         logger.LogInformation(
             "Session started: {Track} ({Type})",
             session.TrackName,
             session.SessionType
         );
-
         _sectorTracker.ResetAll();
         liveTimingService.UpdateSession(session);
-
-        // UI
-        _ = hubContext.Clients.All.SendAsync(TimingHubMethods.SessionUpdated, session, ct);
     }
 
-    private void HandleSessionEnded(LiveSessionEnded _ended, CancellationToken ct)
+    private void HandleSessionEnded()
     {
         logger.LogInformation("Session ended");
-
         _sectorTracker.ResetAll();
         liveTimingService.ClearSession();
-
-        // UI
-        _ = hubContext.Clients.All.SendAsync(
-            TimingHubMethods.SessionUpdated,
-            (LiveSessionInfo?)null,
-            ct
-        );
     }
 
-    private void HandleDriverConnected(LiveDriverEntry driver, CancellationToken ct)
+    private void HandleDriverConnected(LiveDriverEntry driver)
     {
         logger.LogInformation(
             "Driver connected: {Name} (Car {CarId})",
             driver.DriverName,
             driver.CarId
         );
-
         liveTimingService.UpdateDriver(driver);
-
-        // UI sends merged state (same behavior as your old notifier)
-        var merged = liveTimingService.GetDriver(driver.CarId) ?? driver;
-        _ = hubContext.Clients.All.SendAsync(TimingHubMethods.DriverUpdated, merged, ct);
     }
 
-    private async Task HandleDriverDisconnectedAsync(
-        DriverDisconnected disconnected,
-        CancellationToken ct
-    )
+    private void HandleDriverDisconnected(DriverDisconnected disconnected)
     {
         logger.LogInformation("Driver disconnected: Car {CarId}", disconnected.CarId);
-
         _sectorTracker.ResetCar(disconnected.CarId);
         liveTimingService.RemoveDriver(disconnected.CarId);
-
-        await hubContext.Clients.All.SendAsync(
-            TimingHubMethods.DriverDisconnected,
-            disconnected.CarId,
-            ct
-        );
     }
 
-    private async Task HandleDriverTelemetryAsync(DriverTelemetry telemetry, CancellationToken ct)
+    private async Task HandleDriverTelemetryAsync(DriverTelemetry telemetry)
     {
-        // stale-data recovery: telemetry before driver/session known
         if (liveTimingService.GetDriver(telemetry.CarId) is null)
         {
             if (liveTimingService.GetCurrentSession() is null)
@@ -160,32 +118,21 @@ public sealed class RealTimeProcessor(
 
         liveTimingService.UpdateDriverTelemetry(telemetry);
 
-        // Sector crossing tracking
         var crossing = _sectorTracker.ProcessUpdate(telemetry.CarId, telemetry.SplinePosition);
         if (crossing is not null)
         {
             var driver = liveTimingService.GetDriver(telemetry.CarId);
             if (driver is not null)
-            {
                 liveTimingService.UpdateDriver(
                     driver with
                     {
                         LastSectorTimesMs = crossing.CompletedSectors,
                     }
                 );
-            }
-        }
-
-        // UI: push merged state (throttle optional)
-        if (ShouldPushDriverToUi(telemetry.CarId))
-        {
-            var merged = liveTimingService.GetDriver(telemetry.CarId);
-            if (merged is not null)
-                await hubContext.Clients.All.SendAsync(TimingHubMethods.DriverUpdated, merged, ct);
         }
     }
 
-    private async Task HandleLapCompletedAsync(LapCompletedEvent evt, CancellationToken ct)
+    private void HandleLapCompleted(LapCompletedEvent evt)
     {
         logger.LogInformation(
             "Lap completed: Car {CarId} - {LapTimeMs}ms (Cuts: {Cuts})",
@@ -205,7 +152,6 @@ public sealed class RealTimeProcessor(
 
             var sectors = _sectorTracker.OnLapCompleted(evt.CarId, evt.LapTimeMs);
             var lastSectors = sectors?.ToList() ?? driver.LastSectorTimesMs;
-
             var bestSectors =
                 sectors is not null && evt.Cuts == 0
                     ? UpdateBestSectors(driver.BestSectorTimesMs, sectors)
@@ -224,7 +170,6 @@ public sealed class RealTimeProcessor(
             );
         }
 
-        // Merge leaderboard snapshot from event (AC sends bests+laps)
         for (var i = 0; i < evt.Leaderboard.Count; i++)
         {
             var entry = evt.Leaderboard[i];
@@ -248,30 +193,6 @@ public sealed class RealTimeProcessor(
                 }
             );
         }
-
-        // UI: send full updated leaderboard (same as old notifier)
-        var leaderboard = liveTimingService.GetLeaderboard();
-        await hubContext.Clients.All.SendAsync(
-            TimingHubMethods.LeaderboardUpdated,
-            leaderboard,
-            ct
-        );
-    }
-
-    private bool ShouldPushDriverToUi(int carId)
-    {
-        if (DriverUiMinInterval <= TimeSpan.Zero)
-            return true;
-
-        var now = DateTimeOffset.UtcNow;
-        if (
-            _lastDriverUiPush.TryGetValue(carId, out var last)
-            && (now - last) < DriverUiMinInterval
-        )
-            return false;
-
-        _lastDriverUiPush[carId] = now;
-        return true;
     }
 
     private static List<int> UpdateBestSectors(List<int> existing, int[] newSectors)

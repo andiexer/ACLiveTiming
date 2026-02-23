@@ -38,4 +38,6 @@ public record LiveDriverEntry : SimEvent
 
     public List<int> LastSectorTimesMs { get; init; } = [];
     public List<int> BestSectorTimesMs { get; init; } = [];
+
+    public int IncidentCount { get; init; }
 }
