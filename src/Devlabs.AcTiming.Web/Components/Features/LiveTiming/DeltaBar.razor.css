@@ -1,0 +1,47 @@
+.delta-indicator {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1;
+    min-width: 3.4rem; /* keeps the column stable */
+}
+
+.delta-text {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;     /* close to .dp-stat-value */
+    font-weight: 600;       /* close to .timing-table .laptime */
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Color semantics align with your tokens */
+.delta-indicator.delta-pos .delta-text { color: var(--danger); }   /* slower */
+.delta-indicator.delta-neg .delta-text { color: var(--success); }  /* faster */
+.delta-indicator.delta-pb  .delta-text { color: #a855f7; }         /* purple like stat-purple */
+.delta-indicator.delta-na  .delta-text { color: var(--text-muted); }
+
+/* Segmented mini bar: subtle, not neon */
+.delta-bar {
+    display: inline-flex;
+    gap: 2px;
+    height: 4px;
+    align-items: center;
+}
+
+.delta-seg {
+    width: 7px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    opacity: 0.9;
+}
+
+/* Filled segments inherit direction color */
+.delta-bar.bar-pos .delta-seg:not(.delta-seg-off) { background: var(--danger); }
+.delta-bar.bar-neg .delta-seg:not(.delta-seg-off) { background: var(--success); }
+.delta-bar.bar-neutral .delta-seg:not(.delta-seg-off) { background: #a855f7; }
+
+.delta-seg-off {
+    background: var(--border);
+    opacity: 0.45;
+}
