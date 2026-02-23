@@ -10,58 +10,98 @@
 
 <div class="timing-page">
 
-    <!-- ── Session bar ───────────────────────────────────────────────────── -->
-    <div class="session-bar">
-        <div class="session-bar-left">
-            @if (_session is not null)
-            {
-                <span class="session-type-badge">@_session.SessionType</span>
-                <span class="session-track">
-                    @_session.TrackName@(string.IsNullOrEmpty(_session.TrackConfig) ? "" : $" · {_session.TrackConfig}")
-                </span>
-                <span class="session-separator">│</span>
-                <span class="session-server">@_session.ServerName</span>
-                <span class="session-separator">│</span>
-                <span class="session-temps">Road @_session.RoadTemp°C</span>
-            }
-            else
-            {
-                <span class="session-waiting">Waiting for session…</span>
-            }
-        </div>
-        <div class="session-bar-right">
-            @{
-                var timer = FormatSessionTimer();
-                if (!string.IsNullOrEmpty(timer))
+    <!-- ── Session header (bar + stats) ─────────────────────────────────── -->
+    <div class="session-header">
+        <div class="session-bar">
+            <div class="session-bar-left">
+                @if (_session is not null)
                 {
-                    <span class="session-timer">@timer</span>
+                    <span class="session-type-badge">@_session.SessionType</span>
+                    <span class="session-track">
+                        @_session.TrackName@(string.IsNullOrEmpty(_session.TrackConfig) ? "" : $" · {_session.TrackConfig}")
+                    </span>
+                    <span class="session-separator">│</span>
+                    <span class="session-server">@_session.ServerName</span>
+                    <span class="session-separator">│</span>
+                    <span class="session-temps">Road @_session.RoadTemp°C</span>
                 }
-            }
-            <span
-                class="connection-dot @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
-                ●&nbsp;@(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
-            </span>
+                else
+                {
+                    <span class="session-waiting">Waiting for session…</span>
+                }
+            </div>
+            <div class="session-bar-right">
+                @{
+                    var timer = FormatSessionTimer();
+                    if (!string.IsNullOrEmpty(timer))
+                    {
+                        <span class="session-timer">@timer</span>
+                    }
+                }
+                <span
+                    class="connection-dot @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
+                    ●&nbsp;@(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
+                </span>
+            </div>
+        </div>
+
+        <!-- ── Shared calculations ─────────────────────────────────────────── -->
+        @{
+            var sorted = _leaderboard
+                .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
+                .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
+                .ToList();
+            var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
+            var overallBest = sorted
+                .Where(d => d.BestLapTimeMs is not null and not 0)
+                .Min(d => (int?)d.BestLapTimeMs);
+            // Fastest sector time across all drivers for each sector (for purple highlight)
+            var overallBestSectors = Enumerable.Range(0, 3)
+                .Select(s => sorted
+                    .Where(d => d.BestSectorTimesMs.Count > s && d.BestSectorTimesMs[s] > 0)
+                    .Select(d => (int?)d.BestSectorTimesMs[s])
+                    .Min())
+                .ToArray();
+            // Session stats
+            var fastestLapHolder = sorted.FirstOrDefault(d => d.BestLapTimeMs == overallBest);
+            var theoreticalBest = overallBestSectors.All(s => s is > 0)
+                ? overallBestSectors.Sum()
+                : (int?)null;
+            var carsOnTrack = sorted.Count(d => d.IsConnected);
+            var totalIncidents = sorted.Sum(d => d.IncidentCount);
+            var totalLaps = sorted.Sum(d => d.TotalLaps);
+        }
+
+        <!-- ── Stats row ───────────────────────────────────────────────────── -->
+        <div class="sh-stats">
+            <div class="sh-stat">
+                <span class="sh-stat-label">Best</span>
+                <span class="sh-stat-value @(overallBest is not null ? "stat-purple" : "")">@FormatLapTime(overallBest)</span>
+                @if (fastestLapHolder is not null)
+                {
+                    <span class="sh-stat-sub">· @fastestLapHolder.DriverName</span>
+                }
+            </div>
+            <div class="sh-stat">
+                <span class="sh-stat-label">TH. Best</span>
+                <span class="sh-stat-value">@FormatLapTime(theoreticalBest)</span>
+            </div>
+            <div class="sh-stat">
+                <span class="sh-stat-label">On Track</span>
+                <span class="sh-stat-value">@(sorted.Count > 0 ? $"{carsOnTrack} / {sorted.Count}" : "—")</span>
+            </div>
+            <div class="sh-stat">
+                <span class="sh-stat-label">Incidents</span>
+                <span class="sh-stat-value @(totalIncidents > 0 ? "stat-danger" : "")">@(sorted.Count > 0 ? totalIncidents.ToString() : "—")</span>
+            </div>
+            <div class="sh-stat">
+                <span class="sh-stat-label">Laps</span>
+                <span class="sh-stat-value">@(sorted.Count > 0 ? totalLaps.ToString() : "—")</span>
+            </div>
         </div>
     </div>
 
     <!-- ── Two-column grid ───────────────────────────────────────────────── -->
-    @{
-        var sorted = _leaderboard
-            .OrderBy(d => d.BestLapTimeMs is null or 0 ? 1 : 0)
-            .ThenBy(d => d.BestLapTimeMs ?? int.MaxValue)
-            .ToList();
-        var fastestLap = sorted.FirstOrDefault()?.BestLapTimeMs;
-        var overallBest = sorted
-            .Where(d => d.BestLapTimeMs is not null and not 0)
-            .Min(d => (int?)d.BestLapTimeMs);
-        // Fastest sector time across all drivers for each sector (for purple highlight)
-        var overallBestSectors = Enumerable.Range(0, 3)
-            .Select(s => sorted
-                .Where(d => d.BestSectorTimesMs.Count > s && d.BestSectorTimesMs[s] > 0)
-                .Select(d => (int?)d.BestSectorTimesMs[s])
-                .Min())
-            .ToArray();
-    }
     <div class="timing-grid">
 
         <!-- Left column: map + events -->
