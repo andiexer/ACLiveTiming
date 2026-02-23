@@ -23,9 +23,9 @@ commit_parsers = [
 
     { body = "BREAKING CHANGE:", group = "💥 Breaking Changes" },
 
-    { message = "^feat(\\(.+\\))?:", group = "🚀 Features" },
+    { message = "^(feat|feature)(\\(.+\\))?:", group = "🚀 Features" },
 
-    { message = "^fix(\\(.+\\))?:",  group = "🐛 Bug Fixes" },
+    { message = "^(fix|hotfix|bugfix)(\\(.+\\))?:",  group = "🐛 Bug Fixes" },
 
     { message = ".*", skip = true },
 ]
