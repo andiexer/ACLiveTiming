@@ -2,8 +2,7 @@ using Devlabs.AcTiming.Application;
 using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Web.Components;
-using Devlabs.AcTiming.Web.Hubs;
-using Devlabs.AcTiming.Web.Services;
+using Devlabs.AcTiming.Web.LiveTiming;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +13,7 @@ builder.Services.AddSignalR();
 builder.Services.AddApplicationLayer();
 builder.Services.AddInfrastructureLayer(builder.Configuration);
 
-builder.Services.AddHostedService<RealTimeProcessor>();
+builder.Services.AddHostedService<LiveTimingSnapshotBroadcaster>();
 builder.Services.AddSingleton<TrackMapService>();
 
 var app = builder.Build();
@@ -29,7 +28,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
-app.MapHub<TimingHub>(TimingHub.HubUrl);
+app.MapHub<LiveTimingHub>(LiveTimingHub.HubUrl);
 
 // Ensure DB exists on every startup
 using (var scope = app.Services.CreateScope())

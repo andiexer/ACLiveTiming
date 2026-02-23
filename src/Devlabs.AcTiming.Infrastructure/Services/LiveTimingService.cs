@@ -23,6 +23,17 @@ public class LiveTimingService : ILiveTimingService
 
     public void UpdateDriver(LiveDriverEntry driver)
     {
+        if (!_drivers.ContainsKey(driver.CarId))
+        {
+            _currentSession?.SessionEvents.Add(
+                new SessionEvent(
+                    DateTime.UtcNow,
+                    EventKind.Join,
+                    new DriverConnected(driver.CarId, driver.DriverName)
+                )
+            );
+        }
+
         _drivers.AddOrUpdate(
             driver.CarId,
             driver,

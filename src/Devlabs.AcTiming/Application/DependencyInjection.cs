@@ -37,5 +37,6 @@ public static class DependencyInjection
         );
 
         services.AddHostedService<SimEventRouter>();
+        services.AddHostedService<RealTimeProcessor>();
     }
 }

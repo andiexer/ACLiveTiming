@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
-using Devlabs.AcTiming.Domain.Shared;
 
-namespace Devlabs.AcTiming.Web.Services;
+namespace Devlabs.AcTiming.Web.LiveTiming;
 
 /// <summary>
 /// Reads and caches map.ini configuration from wwwroot/maps/{trackSlug}/map.ini.

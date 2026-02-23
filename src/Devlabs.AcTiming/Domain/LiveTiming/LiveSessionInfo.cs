@@ -16,4 +16,6 @@ public record LiveSessionInfo : SimEvent
     public int RoadTemp { get; set; }
 
     public List<LiveDriverEntry> Drivers { get; set; } = [];
+
+    public List<SessionEvent> SessionEvents { get; set; } = [];
 }
