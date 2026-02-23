@@ -3,9 +3,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <GlobalPackageReference Include="CSharpier.MsBuild" Version="1.2.6" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
