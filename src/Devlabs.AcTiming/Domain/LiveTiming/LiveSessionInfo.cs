@@ -2,7 +2,7 @@ using Devlabs.AcTiming.Domain.Shared;
 
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
-public class LiveSessionInfo
+public record LiveSessionInfo : SimEvent
 {
     public required string ServerName { get; set; }
     public required string TrackName { get; set; }

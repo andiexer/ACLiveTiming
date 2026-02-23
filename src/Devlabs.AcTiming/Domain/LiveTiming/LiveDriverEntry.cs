@@ -1,6 +1,6 @@
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
-public record LiveDriverEntry
+public record LiveDriverEntry : SimEvent
 {
     public int CarId { get; init; }
     public required string DriverName { get; init; }

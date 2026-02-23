@@ -1,7 +1,7 @@
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
 /// <summary>Positional and telemetry data carried by a CarUpdate packet.</summary>
-public record DriverTelemetry
+public record DriverTelemetry : SimEvent
 {
     public int CarId { get; init; }
     public float SplinePosition { get; init; }
