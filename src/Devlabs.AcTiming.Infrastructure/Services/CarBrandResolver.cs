@@ -23,8 +23,8 @@ public sealed class CarBrandResolver : ICarBrandResolver
         ("ks_nissan_gtr_gt3", "Nissan", "GT-R GT3"),
         ("ks_corvette_c7r", "Chevrolet", "Corvette C7.R"),
         ("ks_ford_gt40", "Ford", "GT40"),
-        ("ks_audi_r18_etron_quattro", "Audi","R18 e-tron quattro"),
-        ("bmw_m3_gt2", "BMW", "M3 GT2")
+        ("ks_audi_r18_etron_quattro", "Audi", "R18 e-tron quattro"),
+        ("bmw_m3_gt2", "BMW", "M3 GT2"),
     ];
 
     public ICarBrandResolver.CarBrandModel? Resolve(string carModel)

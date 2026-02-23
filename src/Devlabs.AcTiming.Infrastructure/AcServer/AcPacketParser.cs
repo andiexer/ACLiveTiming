@@ -24,7 +24,7 @@ public static class AcPacketParser
             AmbientTemp = reader.ReadByte(),
             RoadTemp = reader.ReadByte(),
             WeatherGraphics = reader.ReadString(),
-            ElapsedMs = reader.ReadInt32()
+            ElapsedMs = reader.ReadInt32(),
         };
     }
 
@@ -39,7 +39,7 @@ public static class AcPacketParser
             DriverGuid = reader.ReadStringW(),
             CarId = reader.ReadByte(),
             CarModel = reader.ReadString(),
-            CarSkin = reader.ReadString()
+            CarSkin = reader.ReadString(),
         };
     }
 
@@ -54,7 +54,7 @@ public static class AcPacketParser
             DriverGuid = reader.ReadStringW(),
             CarId = reader.ReadByte(),
             CarModel = reader.ReadString(),
-            CarSkin = reader.ReadString()
+            CarSkin = reader.ReadString(),
         };
     }
 
@@ -70,7 +70,7 @@ public static class AcPacketParser
             Velocity = reader.ReadVector3(),
             Gear = reader.ReadByte(),
             EngineRpm = reader.ReadUInt16(),
-            NormalizedSplinePos = reader.ReadFloat()
+            NormalizedSplinePos = reader.ReadFloat(),
         };
     }
 
@@ -90,7 +90,7 @@ public static class AcPacketParser
             EventType = eventType,
             CarId = carId,
             OtherCarId = otherCarId,
-            ImpactSpeed = impactSpeed
+            ImpactSpeed = impactSpeed,
         };
     }
 
@@ -107,7 +107,7 @@ public static class AcPacketParser
             CarSkin = reader.ReadStringW(),
             DriverName = reader.ReadStringW(),
             DriverTeam = reader.ReadStringW(),
-            DriverGuid = reader.ReadStringW()
+            DriverGuid = reader.ReadStringW(),
         };
     }
 
@@ -124,12 +124,14 @@ public static class AcPacketParser
         var leaderboard = new List<AcLeaderboardEntry>(carsCount);
         for (var i = 0; i < carsCount; i++)
         {
-            leaderboard.Add(new AcLeaderboardEntry
-            {
-                CarId = reader.ReadByte(),
-                LapTimeMs = (int)reader.ReadUInt32(),
-                Laps = reader.ReadUInt16()
-            });
+            leaderboard.Add(
+                new AcLeaderboardEntry
+                {
+                    CarId = reader.ReadByte(),
+                    LapTimeMs = (int)reader.ReadUInt32(),
+                    Laps = reader.ReadUInt16(),
+                }
+            );
         }
 
         var gripLevel = reader.ReadByte();
@@ -141,7 +143,7 @@ public static class AcPacketParser
             Cuts = cuts,
             CarsCount = carsCount,
             GripLevel = gripLevel,
-            Leaderboard = leaderboard
+            Leaderboard = leaderboard,
         };
     }
 }

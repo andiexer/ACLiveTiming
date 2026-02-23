@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Sockets;
 using Devlabs.AcTiming.Simulator;
 
-var port    = args.Length > 0 && int.TryParse(args[0], out var p) ? p : 9996;
-var count   = Math.Min(args.Length > 1 && int.TryParse(args[1], out var d) ? d : 10, 10);
-var tickMs  = args.Length > 2 && int.TryParse(args[2], out var t) ? t : 250;
+var port = args.Length > 0 && int.TryParse(args[0], out var p) ? p : 9996;
+var count = Math.Min(args.Length > 1 && int.TryParse(args[1], out var d) ? d : 10, 10);
+var tickMs = args.Length > 2 && int.TryParse(args[2], out var t) ? t : 250;
 
 Console.WriteLine($"AC Timing Simulator - Sending to UDP port {port}");
 Console.WriteLine($"Drivers: {count}, Tick: {tickMs}ms");
@@ -12,63 +12,79 @@ Console.WriteLine("Press Ctrl+C to stop.");
 Console.WriteLine();
 
 using var udp = new UdpClient();
-var endpoint  = new IPEndPoint(IPAddress.Loopback, port);
-var writer    = new AcPacketWriter();
-var rng       = new Random(42);
+var endpoint = new IPEndPoint(IPAddress.Loopback, port);
+var writer = new AcPacketWriter();
+var rng = new Random(42);
 
 // 10 GT3 drivers — take the first `count`
 (string Name, string Guid, string Car, string Skin)[] allDrivers =
 [
-    ("Max Verstappen",   "S76561198000000001", "ks_ferrari_488_gt3",          "red_1"),
-    ("Lewis Hamilton",   "S76561198000000002", "ks_porsche_911_gt3_r",        "white_2"),
-    ("Charles Leclerc",  "S76561198000000003", "ks_lamborghini_huracan_gt3",  "green_3"),
-    ("Lando Norris",     "S76561198000000004", "ks_mclaren_650s_gt3",         "orange_4"),
-    ("Carlos Sainz",     "S76561198000000005", "ks_mercedes_amg_gt3",         "silver_5"),
-    ("George Russell",   "S76561198000000006", "ks_audi_r8_lms_2016",         "blue_6"),
-    ("Fernando Alonso",  "S76561198000000007", "ks_bmw_m6_gt3",               "blue_7"),
-    ("Sebastian Vettel", "S76561198000000008", "ks_nissan_gtr_gt3",           "white_8"),
-    ("Kimi Raikkonen",   "S76561198000000009", "ks_corvette_c7r",             "yellow_9"),
-    ("Daniel Ricciardo", "S76561198000000010", "ks_ford_gt40",                "red_10"),
+    ("Max Verstappen", "S76561198000000001", "ks_ferrari_488_gt3", "red_1"),
+    ("Lewis Hamilton", "S76561198000000002", "ks_porsche_911_gt3_r", "white_2"),
+    ("Charles Leclerc", "S76561198000000003", "ks_lamborghini_huracan_gt3", "green_3"),
+    ("Lando Norris", "S76561198000000004", "ks_mclaren_650s_gt3", "orange_4"),
+    ("Carlos Sainz", "S76561198000000005", "ks_mercedes_amg_gt3", "silver_5"),
+    ("George Russell", "S76561198000000006", "ks_audi_r8_lms_2016", "blue_6"),
+    ("Fernando Alonso", "S76561198000000007", "ks_bmw_m6_gt3", "blue_7"),
+    ("Sebastian Vettel", "S76561198000000008", "ks_nissan_gtr_gt3", "white_8"),
+    ("Kimi Raikkonen", "S76561198000000009", "ks_corvette_c7r", "yellow_9"),
+    ("Daniel Ricciardo", "S76561198000000010", "ks_ford_gt40", "red_10"),
 ];
 var drivers = allDrivers[..count];
 
 // Base lap times in ms for Spa (~2:17–2:22), one per driver slot
-int[] baseLapTimes = [137_500, 138_200, 138_800, 139_100, 139_500, 140_200, 140_800, 141_300, 141_900, 142_500];
+int[] baseLapTimes =
+[
+    137_500,
+    138_200,
+    138_800,
+    139_100,
+    139_500,
+    140_200,
+    140_800,
+    141_300,
+    141_900,
+    142_500,
+];
 
 // ── NewSession ──────────────────────────────────────────────────────────────
 Console.WriteLine(">> Sending NewSession (Practice @ Spa)...");
-await Send(writer
-    .WriteByte(50)              // NewSession
-    .WriteByte(4)               // protocol version
-    .WriteByte(0)               // session index
-    .WriteByte(0)               // current session index
-    .WriteByte(1)               // session count
-    .WriteStringW("AC Timing Dev Server")
-    .WriteString("simulator")
-    .WriteString("")            // track config
-    .WriteString("Practice")
-    .WriteByte(1)               // type: Practice
-    .WriteUInt16(1800)          // session time (s)
-    .WriteUInt16(0)             // laps (0 = timed)
-    .WriteUInt16(60)            // wait time
-    .WriteByte(22)              // ambient temp
-    .WriteByte(28)              // road temp
-    .WriteString("3_clear")     // weather
-    .WriteInt32(0));            // elapsed ms
+await Send(
+    writer
+        .WriteByte(50) // NewSession
+        .WriteByte(4) // protocol version
+        .WriteByte(0) // session index
+        .WriteByte(0) // current session index
+        .WriteByte(1) // session count
+        .WriteStringW("AC Timing Dev Server")
+        .WriteString("simulator")
+        .WriteString("") // track config
+        .WriteString("Practice")
+        .WriteByte(1) // type: Practice
+        .WriteUInt16(1800) // session time (s)
+        .WriteUInt16(0) // laps (0 = timed)
+        .WriteUInt16(60) // wait time
+        .WriteByte(22) // ambient temp
+        .WriteByte(28) // road temp
+        .WriteString("3_clear") // weather
+        .WriteInt32(0)
+); // elapsed ms
 await Task.Delay(500);
 
 // ── Connect drivers ──────────────────────────────────────────────────────────
 for (var i = 0; i < count; i++)
 {
     var (name, guid, car, skin) = drivers[i];
-    Console.WriteLine($">> Driver connected: {name,-20} ({car})");
-    await Send(writer
-        .WriteByte(51)          // NewConnection
-        .WriteStringW(name)
-        .WriteStringW(guid)
-        .WriteByte((byte)i)     // car id
-        .WriteString(car)
-        .WriteString(skin));
+    Console.WriteLine($">> Driver connected: {name, -20} ({car})");
+    await Send(
+        writer
+            .WriteByte(51) // NewConnection
+            .WriteStringW(name)
+            .WriteStringW(guid)
+            .WriteByte((byte)i) // car id
+            .WriteString(car)
+            .WriteString(skin)
+    );
     await Task.Delay(100);
 }
 
@@ -77,10 +93,10 @@ Console.WriteLine("Simulating...");
 Console.WriteLine();
 
 // ── Driver state ─────────────────────────────────────────────────────────────
-var splinePos    = new float[count];
-var lapCounts    = new int[count];
-var bestLapMs    = new int[count];
-var lapVariance  = new int[count];
+var splinePos = new float[count];
+var lapCounts = new int[count];
+var bestLapMs = new int[count];
+var lapVariance = new int[count];
 var lapStartTick = new long[count];
 
 // Spread drivers evenly around the track so the UI is instantly crowded.
@@ -88,8 +104,8 @@ var lapStartTick = new long[count];
 // driver started from the beginning of the lap at the appropriate offset).
 for (var i = 0; i < count; i++)
 {
-    splinePos[i]    = i / (float)count;
-    lapVariance[i]  = rng.Next(-2_000, 2_000);
+    splinePos[i] = i / (float)count;
+    lapVariance[i] = rng.Next(-2_000, 2_000);
     lapStartTick[i] = -(long)(splinePos[i] * baseLapTimes[i] / tickMs);
 }
 
@@ -98,7 +114,11 @@ const float Rx = 600f;
 const float Rz = 350f;
 
 using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
 
 var tick = 0L;
 try
@@ -124,12 +144,14 @@ try
             lapVariance[i] = rng.Next(-2_000, 2_000);
 
             var isBest = bestLapMs[i] == 0 || elapsed < bestLapMs[i];
-            if (isBest) bestLapMs[i] = elapsed;
+            if (isBest)
+                bestLapMs[i] = elapsed;
 
             var cuts = rng.Next(10) == 0 ? (byte)rng.Next(1, 3) : (byte)0;
 
             Console.WriteLine(
-                $"  Lap:  {drivers[i].Name,-20} {FormatTime(elapsed)}{(isBest ? " ** BEST **" : "")}{(cuts > 0 ? $"  [{cuts} cut(s)]" : "")}");
+                $"  Lap:  {drivers[i].Name, -20} {FormatTime(elapsed)}{(isBest ? " ** BEST **" : "")}{(cuts > 0 ? $"  [{cuts} cut(s)]" : "")}"
+            );
 
             // LapCompleted (73)
             var pkt = writer
@@ -140,7 +162,7 @@ try
                 .WriteByte((byte)count);
 
             for (var j = 0; j < count; j++)
-                pkt .WriteByte((byte)j)
+                pkt.WriteByte((byte)j)
                     .WriteUInt32((uint)bestLapMs[j])
                     .WriteUInt16((ushort)lapCounts[j]);
 
@@ -151,28 +173,30 @@ try
         // ── CarUpdate for every driver (53) ───────────────────────────────
         for (var i = 0; i < count; i++)
         {
-            var angle  = splinePos[i] * 2f * MathF.PI;
-            var lapMs  = baseLapTimes[i] + lapVariance[i];
-            var speed  = (Rx + Rz) * MathF.PI / lapMs * 1_000f; // rough m/s
+            var angle = splinePos[i] * 2f * MathF.PI;
+            var lapMs = baseLapTimes[i] + lapVariance[i];
+            var speed = (Rx + Rz) * MathF.PI / lapMs * 1_000f; // rough m/s
 
             var posX = Rx * MathF.Cos(angle);
             var posZ = Rz * MathF.Sin(angle);
             var velX = -speed * MathF.Sin(angle);
-            var velZ =  speed * MathF.Cos(angle);
+            var velZ = speed * MathF.Cos(angle);
 
             // Gear/RPM: higher on straights (where angular speed variation is larger)
             var throttle = 0.5f + 0.5f * MathF.Abs(MathF.Sin(angle * 2f));
-            var gear     = (byte)(1 + (int)(throttle * 5f));
-            var rpm      = (ushort)(3_000 + (int)(throttle * 5_000f) + rng.Next(-300, 300));
+            var gear = (byte)(1 + (int)(throttle * 5f));
+            var rpm = (ushort)(3_000 + (int)(throttle * 5_000f) + rng.Next(-300, 300));
 
-            await Send(writer
-                .WriteByte(53)
-                .WriteByte((byte)i)
-                .WriteVector3(posX, 0f, posZ)
-                .WriteVector3(velX, 0f, velZ)
-                .WriteByte(gear)
-                .WriteUInt16(rpm)
-                .WriteFloat(splinePos[i]));
+            await Send(
+                writer
+                    .WriteByte(53)
+                    .WriteByte((byte)i)
+                    .WriteVector3(posX, 0f, posZ)
+                    .WriteVector3(velX, 0f, velZ)
+                    .WriteByte(gear)
+                    .WriteUInt16(rpm)
+                    .WriteFloat(splinePos[i])
+            );
         }
 
         // ── Random collision events (~1 every ~17 s at 250 ms tick) ──────
@@ -187,24 +211,30 @@ try
                 // Car-vs-car: pick a different car
                 var otherId = (carId + 1 + rng.Next(count - 1)) % count;
                 Console.WriteLine(
-                    $"  Crash: {drivers[carId].Name,-20} → {drivers[otherId].Name,-20} @ {impact,5:F0} km/h");
-                await Send(writer
-                    .WriteByte(130)     // ClientEvent
-                    .WriteByte(10)      // CollisionWithCar
-                    .WriteByte((byte)carId)
-                    .WriteByte((byte)otherId)
-                    .WriteFloat(impact));
+                    $"  Crash: {drivers[carId].Name, -20} → {drivers[otherId].Name, -20} @ {impact, 5:F0} km/h"
+                );
+                await Send(
+                    writer
+                        .WriteByte(130) // ClientEvent
+                        .WriteByte(10) // CollisionWithCar
+                        .WriteByte((byte)carId)
+                        .WriteByte((byte)otherId)
+                        .WriteFloat(impact)
+                );
             }
             else
             {
                 // Car-vs-environment
                 Console.WriteLine(
-                    $"  Crash: {drivers[carId].Name,-20} → environment            @ {impact,5:F0} km/h");
-                await Send(writer
-                    .WriteByte(130)     // ClientEvent
-                    .WriteByte(11)      // CollisionWithEnv
-                    .WriteByte((byte)carId)
-                    .WriteFloat(impact));
+                    $"  Crash: {drivers[carId].Name, -20} → environment            @ {impact, 5:F0} km/h"
+                );
+                await Send(
+                    writer
+                        .WriteByte(130) // ClientEvent
+                        .WriteByte(11) // CollisionWithEnv
+                        .WriteByte((byte)carId)
+                        .WriteFloat(impact)
+                );
             }
         }
 

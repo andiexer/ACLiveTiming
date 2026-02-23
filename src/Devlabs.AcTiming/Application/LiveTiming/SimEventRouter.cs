@@ -8,8 +8,8 @@ public sealed class SimEventRouter(
     ILogger<SimEventRouter> logger,
     ISimEventSource source,
     RealtimeBus realtimeBus,
-    PersistenceBus persistenceBus)
-    : BackgroundService
+    PersistenceBus persistenceBus
+) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
