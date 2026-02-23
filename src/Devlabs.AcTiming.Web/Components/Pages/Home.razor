@@ -89,16 +89,15 @@
             <div class="panel events-panel">
                 <div class="panel-header">Events</div>
                 <div class="events-list">
-                    @if (_session is not null && _session.SessionEvents.Count == 0)
+                    @if (_session is not null && _session.SessionEvents.Count > 0)
                     {
-                        @foreach (var evt in _session.SessionEvents)
+                        @foreach (var evt in _session.SessionEvents.OrderByDescending(x => x.OccurredAtUtc).Take(15))
                         {
                             <div class="event-item">
                                 <div class="event-indicator event-@evt.EventKind.ToString().ToLower()"></div>
                                 <div class="event-content">
-                                    <span
-                                        class="event-time">@evt.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
-                                    <span class="event-message">MapEventMessage(@evt.Event)</span>
+                                    <span class="event-time">@evt.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                                    <span class="event-message">@MapEventMessage(evt.Event)</span>
                                 </div>
                             </div>
                         }
@@ -290,7 +289,7 @@
                             </div>
                             <div class="dp-stat-row last">
                                 <span class="dp-stat-label">Incidents</span>
-                                <span class="dp-stat-value">@(_incidents.Count(i => i.CarId == sel.CarId))</span>
+                                <span class="dp-stat-value">@sel.IncidentCount</span>
                             </div>
                         </div>
 
@@ -360,8 +359,6 @@
             (MarkupString)"Unknown event"
     };
 
-    // ── Collision tracking (for incident count in driver panel) ───────────
-    private readonly List<CollisionEvent> _incidents = [];
 
     // ── Initialization ────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()

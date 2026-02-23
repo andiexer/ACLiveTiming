@@ -12,5 +12,6 @@ public interface ILiveTimingService
     void UpdateDriver(LiveDriverEntry driver);
     void UpdateDriverTelemetry(DriverTelemetry telemetry);
     void RemoveDriver(int carId);
+    void AddCollisionEvent(CollisionEvent collision);
     void ClearSession();
 }

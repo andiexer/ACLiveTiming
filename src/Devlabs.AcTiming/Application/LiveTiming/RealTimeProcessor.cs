@@ -53,6 +53,10 @@ public sealed class RealTimeProcessor(
                     case LapCompletedEvent l:
                         HandleLapCompleted(l);
                         break;
+
+                    case CollisionEvent c:
+                        liveTimingService.AddCollisionEvent(c);
+                        break;
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
