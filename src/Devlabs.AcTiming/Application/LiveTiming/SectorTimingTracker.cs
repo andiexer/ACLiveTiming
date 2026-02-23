@@ -48,7 +48,7 @@ public sealed class SectorTimingTracker
                 PreviousSpline = spline,
                 PreviousUpdateTime = now,
                 CurrentSector = SectorOf(spline),
-                SectorStartTime = now
+                SectorStartTime = now,
             };
             return null;
         }
@@ -82,24 +82,30 @@ public sealed class SectorTimingTracker
         // Check each sector boundary in order
         for (var i = 0; i < Boundaries.Length; i++)
         {
-            if (state.CurrentSector != i) continue;
-            if (prev >= Boundaries[i] || spline < Boundaries[i]) continue;
+            if (state.CurrentSector != i)
+                continue;
+            if (prev >= Boundaries[i] || spline < Boundaries[i])
+                continue;
 
             // Interpolate crossing time between the two updates for sub-tick accuracy
             var fraction = delta > 0f ? (Boundaries[i] - prev) / delta : 0f;
             var elapsed = (now - prevTime).TotalMilliseconds;
             var crossingTime = prevTime.AddMilliseconds(fraction * elapsed);
-            var sectorMs = Math.Max(1, (int)(crossingTime - state.SectorStartTime).TotalMilliseconds);
+            var sectorMs = Math.Max(
+                1,
+                (int)(crossingTime - state.SectorStartTime).TotalMilliseconds
+            );
 
-            if (i == 0) state.S1Ms = sectorMs;
-            else state.S2Ms = sectorMs;
+            if (i == 0)
+                state.S1Ms = sectorMs;
+            else
+                state.S2Ms = sectorMs;
 
             state.CurrentSector = i + 1;
             state.SectorStartTime = crossingTime;
 
-            var completedSectors = i == 0
-                ? new List<int> { state.S1Ms }
-                : new List<int> { state.S1Ms, state.S2Ms };
+            var completedSectors =
+                i == 0 ? new List<int> { state.S1Ms } : new List<int> { state.S1Ms, state.S2Ms };
 
             return new SectorCrossing(i, sectorMs, completedSectors);
         }
@@ -113,7 +119,8 @@ public sealed class SectorTimingTracker
     /// </summary>
     public int[]? OnLapCompleted(int carId, int lapTimeMs)
     {
-        if (!_states.TryGetValue(carId, out var state)) return null;
+        if (!_states.TryGetValue(carId, out var state))
+            return null;
 
         var s1 = state.S1Ms;
         var s2 = state.S2Ms;
@@ -123,17 +130,22 @@ public sealed class SectorTimingTracker
         state.S1Ms = 0;
         state.S2Ms = 0;
 
-        if (s1 <= 0 || s2 <= 0) return null;
+        if (s1 <= 0 || s2 <= 0)
+            return null;
 
         var s3 = lapTimeMs - s1 - s2;
-        if (s3 <= 0) return null;
+        if (s3 <= 0)
+            return null;
 
         return [s1, s2, s3];
     }
 
     public void ResetCar(int carId) => _states.Remove(carId);
+
     public void ResetAll() => _states.Clear();
 
     private static int SectorOf(float spline) =>
-        spline < Boundaries[0] ? 0 : spline < Boundaries[1] ? 1 : 2;
+        spline < Boundaries[0] ? 0
+        : spline < Boundaries[1] ? 1
+        : 2;
 }

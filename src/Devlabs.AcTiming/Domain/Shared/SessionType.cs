@@ -4,5 +4,5 @@ public enum SessionType
 {
     Practice = 1,
     Qualifying = 2,
-    Race = 3
+    Race = 3,
 }

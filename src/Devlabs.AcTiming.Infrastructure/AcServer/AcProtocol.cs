@@ -24,6 +24,7 @@ public static class AcProtocol
     public const byte Error = 60;
     public const byte LapCompleted = 73;
     public const byte ClientEvent = 130;
+
     /// <summary>
     /// Sector / split time — requires AC Server Manager (reads server log and re-broadcasts).
     /// Packet: type(1) + carId(1) + splitIndex(1, 0-based) + splitTimeMs(4) [+ cuts(1) — unconfirmed]

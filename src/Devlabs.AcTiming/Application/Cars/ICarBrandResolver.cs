@@ -11,6 +11,7 @@ public interface ICarBrandResolver
     public record CarBrandModel(string Brand, string Model)
     {
         public override string ToString() => $"{Brand} {Model}";
+
         public string Slug => Brand.ToLower();
     }
 }

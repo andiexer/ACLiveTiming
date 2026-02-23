@@ -12,24 +12,25 @@ namespace Devlabs.AcTiming.Infrastructure.AcServer;
 
 public sealed class AcUdpEventSource(
     ILogger<AcUdpEventSource> logger,
-    IOptions<AcServerOptions> options)
-    : BackgroundService, ISimEventSource
+    IOptions<AcServerOptions> options
+) : BackgroundService, ISimEventSource
 {
     private readonly AcServerOptions _options = options.Value;
 
     private UdpClient? _udpClient;
     private IPEndPoint? _serverEndpoint;
 
-    private readonly Channel<SimEvent> _events =
-        Channel.CreateBounded<SimEvent>(new BoundedChannelOptions(50_000)
+    private readonly Channel<SimEvent> _events = Channel.CreateBounded<SimEvent>(
+        new BoundedChannelOptions(50_000)
         {
             SingleWriter = true,
             SingleReader = true,
-            FullMode = BoundedChannelFullMode.DropOldest
-        });
+            FullMode = BoundedChannelFullMode.DropOldest,
+        }
+    );
 
-    public IAsyncEnumerable<SimEvent> ReadSimEventsAsync(CancellationToken ct = default)
-        => _events.Reader.ReadAllAsync(ct);
+    public IAsyncEnumerable<SimEvent> ReadSimEventsAsync(CancellationToken ct = default) =>
+        _events.Reader.ReadAllAsync(ct);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -40,7 +41,10 @@ public sealed class AcUdpEventSource(
             // Use explicit server endpoint if configured, otherwise auto-detect from first packet
             if (!string.IsNullOrEmpty(_options.ServerHost) && _options.ServerPort > 0)
             {
-                _serverEndpoint = new IPEndPoint(IPAddress.Parse(_options.ServerHost), _options.ServerPort);
+                _serverEndpoint = new IPEndPoint(
+                    IPAddress.Parse(_options.ServerHost),
+                    _options.ServerPort
+                );
                 logger.LogInformation("AC server endpoint configured: {Endpoint}", _serverEndpoint);
             }
 
@@ -142,7 +146,8 @@ public sealed class AcUdpEventSource(
 
     private void ProcessPacket(byte[] data)
     {
-        if (data.Length == 0) return;
+        if (data.Length == 0)
+            return;
 
         var packetType = data[0];
 
@@ -187,9 +192,11 @@ public sealed class AcUdpEventSource(
                 break;
 
             case AcProtocol.LapSplit:
-                logger.LogInformation("LapSplit raw ({Len} bytes): {Hex}",
+                logger.LogInformation(
+                    "LapSplit raw ({Len} bytes): {Hex}",
                     data.Length,
-                    Convert.ToHexString(data));
+                    Convert.ToHexString(data)
+                );
                 break;
 
             default:
@@ -203,8 +210,17 @@ public sealed class AcUdpEventSource(
         var info = AcPacketParser.ParseSessionInfo(data);
         logger.LogDebug(
             "SessionInfo: Server={Server} Track={Track}/{Config} Session={Name} Type={Type} Time={Time}min Laps={Laps} Elapsed={Elapsed}ms Ambient={Ambient}°C Road={Road}°C",
-            info.ServerName, info.Track, info.TrackConfig, info.Name, info.Type, info.Time, info.Laps, info.ElapsedMs,
-            info.AmbientTemp, info.RoadTemp);
+            info.ServerName,
+            info.Track,
+            info.TrackConfig,
+            info.Name,
+            info.Type,
+            info.Time,
+            info.Laps,
+            info.ElapsedMs,
+            info.AmbientTemp,
+            info.RoadTemp
+        );
 
         var session = new LiveSessionInfo
         {
@@ -216,7 +232,7 @@ public sealed class AcUdpEventSource(
             LapLimit = info.Laps,
             ElapsedMs = info.ElapsedMs,
             AmbientTemp = info.AmbientTemp,
-            RoadTemp = info.RoadTemp
+            RoadTemp = info.RoadTemp,
         };
 
         _events.Writer.TryWrite(session);
@@ -225,8 +241,14 @@ public sealed class AcUdpEventSource(
     private void HandleNewConnection(byte[] data)
     {
         var conn = AcPacketParser.ParseNewConnection(data);
-        logger.LogDebug("NewConnection: Driver={Name} GUID={Guid} CarId={CarId} Car={Model} Skin={Skin}",
-            conn.DriverName, conn.DriverGuid, conn.CarId, conn.CarModel, conn.CarSkin);
+        logger.LogDebug(
+            "NewConnection: Driver={Name} GUID={Guid} CarId={CarId} Car={Model} Skin={Skin}",
+            conn.DriverName,
+            conn.DriverGuid,
+            conn.CarId,
+            conn.CarModel,
+            conn.CarSkin
+        );
 
         var entry = new LiveDriverEntry
         {
@@ -235,7 +257,7 @@ public sealed class AcUdpEventSource(
             DriverGuid = conn.DriverGuid,
             CarModel = conn.CarModel,
             CarSkin = conn.CarSkin,
-            IsConnected = true
+            IsConnected = true,
         };
 
         _events.Writer.TryWrite(entry);
@@ -244,8 +266,13 @@ public sealed class AcUdpEventSource(
     private void HandleConnectionClosed(byte[] data)
     {
         var conn = AcPacketParser.ParseConnectionClosed(data);
-        logger.LogDebug("ConnectionClosed: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
-            conn.DriverName, conn.DriverGuid, conn.CarId, conn.CarModel);
+        logger.LogDebug(
+            "ConnectionClosed: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
+            conn.DriverName,
+            conn.DriverGuid,
+            conn.CarId,
+            conn.CarModel
+        );
 
         _events.Writer.TryWrite(new DriverDisconnected(conn.CarId));
     }
@@ -253,10 +280,16 @@ public sealed class AcUdpEventSource(
     private void HandleCarInfo(byte[] data)
     {
         var info = AcPacketParser.ParseCarInfo(data);
-        if (!info.IsConnected) return;
+        if (!info.IsConnected)
+            return;
 
-        logger.LogInformation("CarInfo: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
-            info.DriverName, info.DriverGuid, info.CarId, info.CarModel);
+        logger.LogInformation(
+            "CarInfo: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
+            info.DriverName,
+            info.DriverGuid,
+            info.CarId,
+            info.CarModel
+        );
 
         var entry = new LiveDriverEntry
         {
@@ -266,7 +299,7 @@ public sealed class AcUdpEventSource(
             Team = info.DriverTeam,
             CarModel = info.CarModel,
             CarSkin = info.CarSkin,
-            IsConnected = true
+            IsConnected = true,
         };
 
         _events.Writer.TryWrite(entry);
@@ -286,7 +319,7 @@ public sealed class AcUdpEventSource(
             WorldZ = update.Position.Z,
             SpeedKmh = speedKmh,
             Gear = update.Gear,
-            EngineRpm = update.EngineRpm
+            EngineRpm = update.EngineRpm,
         };
 
         _events.Writer.TryWrite(telemetry);
@@ -297,20 +330,30 @@ public sealed class AcUdpEventSource(
         var lapInfo = AcPacketParser.ParseLapCompleted(data);
         logger.LogDebug(
             "LapCompleted: CarId={CarId} LapTime={LapTime}ms Cuts={Cuts} Grip={Grip} Cars={Cars} Leaderboard=[{Leaderboard}]",
-            lapInfo.CarId, lapInfo.LapTimeMs, lapInfo.Cuts, lapInfo.GripLevel, lapInfo.CarsCount,
-            string.Join(", ", lapInfo.Leaderboard.Select(e => $"Car{e.CarId}:{e.LapTimeMs}ms/{e.Laps}laps")));
+            lapInfo.CarId,
+            lapInfo.LapTimeMs,
+            lapInfo.Cuts,
+            lapInfo.GripLevel,
+            lapInfo.CarsCount,
+            string.Join(
+                ", ",
+                lapInfo.Leaderboard.Select(e => $"Car{e.CarId}:{e.LapTimeMs}ms/{e.Laps}laps")
+            )
+        );
 
         var evt = new LapCompletedEvent
         {
             CarId = lapInfo.CarId,
             LapTimeMs = lapInfo.LapTimeMs,
             Cuts = lapInfo.Cuts,
-            Leaderboard = lapInfo.Leaderboard.Select(e => new LeaderboardEntry
-            {
-                CarId = e.CarId,
-                BestLapTimeMs = e.LapTimeMs,
-                TotalLaps = e.Laps
-            }).ToList()
+            Leaderboard = lapInfo
+                .Leaderboard.Select(e => new LeaderboardEntry
+                {
+                    CarId = e.CarId,
+                    BestLapTimeMs = e.LapTimeMs,
+                    TotalLaps = e.Laps,
+                })
+                .ToList(),
         };
 
         _events.Writer.TryWrite(evt);
@@ -319,8 +362,13 @@ public sealed class AcUdpEventSource(
     private void HandleClientEvent(byte[] data)
     {
         var evt = AcPacketParser.ParseClientEvent(data);
-        logger.LogInformation("Collision: Type={Type} Car={CarId} OtherCar={OtherCarId} Speed={Speed:F1}km/h",
-            evt.EventType, evt.CarId, evt.OtherCarId, evt.ImpactSpeed);
+        logger.LogInformation(
+            "Collision: Type={Type} Car={CarId} OtherCar={OtherCarId} Speed={Speed:F1}km/h",
+            evt.EventType,
+            evt.CarId,
+            evt.OtherCarId,
+            evt.ImpactSpeed
+        );
 
         var collision = new CollisionEvent
         {
@@ -328,7 +376,7 @@ public sealed class AcUdpEventSource(
             Type = (CollisionType)evt.EventType,
             OtherCarId = evt.OtherCarId,
             ImpactSpeedKmh = evt.ImpactSpeed,
-            OccurredAtUtc = DateTime.UtcNow
+            OccurredAtUtc = DateTime.UtcNow,
         };
 
         _events.Writer.TryWrite(collision);

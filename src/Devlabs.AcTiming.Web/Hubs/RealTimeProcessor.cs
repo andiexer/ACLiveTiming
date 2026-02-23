@@ -59,7 +59,11 @@ public sealed class RealTimeProcessor(
                         break;
 
                     case CollisionEvent c:
-                        await hubContext.Clients.All.SendAsync(TimingHubMethods.CollisionOccurred, c, stoppingToken);
+                        await hubContext.Clients.All.SendAsync(
+                            TimingHubMethods.CollisionOccurred,
+                            c,
+                            stoppingToken
+                        );
                         break;
 
                     default:
@@ -82,7 +86,11 @@ public sealed class RealTimeProcessor(
 
     private void HandleSessionStarted(LiveSessionInfo session, CancellationToken ct)
     {
-        logger.LogInformation("Session started: {Track} ({Type})", session.TrackName, session.SessionType);
+        logger.LogInformation(
+            "Session started: {Track} ({Type})",
+            session.TrackName,
+            session.SessionType
+        );
 
         _sectorTracker.ResetAll();
         liveTimingService.UpdateSession(session);
@@ -99,12 +107,20 @@ public sealed class RealTimeProcessor(
         liveTimingService.ClearSession();
 
         // UI
-        _ = hubContext.Clients.All.SendAsync(TimingHubMethods.SessionUpdated, (LiveSessionInfo?)null, ct);
+        _ = hubContext.Clients.All.SendAsync(
+            TimingHubMethods.SessionUpdated,
+            (LiveSessionInfo?)null,
+            ct
+        );
     }
 
     private void HandleDriverConnected(LiveDriverEntry driver, CancellationToken ct)
     {
-        logger.LogInformation("Driver connected: {Name} (Car {CarId})", driver.DriverName, driver.CarId);
+        logger.LogInformation(
+            "Driver connected: {Name} (Car {CarId})",
+            driver.DriverName,
+            driver.CarId
+        );
 
         liveTimingService.UpdateDriver(driver);
 
@@ -113,14 +129,21 @@ public sealed class RealTimeProcessor(
         _ = hubContext.Clients.All.SendAsync(TimingHubMethods.DriverUpdated, merged, ct);
     }
 
-    private async Task HandleDriverDisconnectedAsync(DriverDisconnected disconnected, CancellationToken ct)
+    private async Task HandleDriverDisconnectedAsync(
+        DriverDisconnected disconnected,
+        CancellationToken ct
+    )
     {
         logger.LogInformation("Driver disconnected: Car {CarId}", disconnected.CarId);
 
         _sectorTracker.ResetCar(disconnected.CarId);
         liveTimingService.RemoveDriver(disconnected.CarId);
 
-        await hubContext.Clients.All.SendAsync(TimingHubMethods.DriverDisconnected, disconnected.CarId, ct);
+        await hubContext.Clients.All.SendAsync(
+            TimingHubMethods.DriverDisconnected,
+            disconnected.CarId,
+            ct
+        );
     }
 
     private async Task HandleDriverTelemetryAsync(DriverTelemetry telemetry, CancellationToken ct)
@@ -144,10 +167,12 @@ public sealed class RealTimeProcessor(
             var driver = liveTimingService.GetDriver(telemetry.CarId);
             if (driver is not null)
             {
-                liveTimingService.UpdateDriver(driver with
-                {
-                    LastSectorTimesMs = crossing.CompletedSectors
-                });
+                liveTimingService.UpdateDriver(
+                    driver with
+                    {
+                        LastSectorTimesMs = crossing.CompletedSectors,
+                    }
+                );
             }
         }
 
@@ -162,32 +187,41 @@ public sealed class RealTimeProcessor(
 
     private async Task HandleLapCompletedAsync(LapCompletedEvent evt, CancellationToken ct)
     {
-        logger.LogInformation("Lap completed: Car {CarId} - {LapTimeMs}ms (Cuts: {Cuts})",
-            evt.CarId, evt.LapTimeMs, evt.Cuts);
+        logger.LogInformation(
+            "Lap completed: Car {CarId} - {LapTimeMs}ms (Cuts: {Cuts})",
+            evt.CarId,
+            evt.LapTimeMs,
+            evt.Cuts
+        );
 
         var driver = liveTimingService.GetDriver(evt.CarId);
         if (driver is not null)
         {
-            var bestLap = evt.Cuts == 0 && (driver.BestLapTimeMs is null || evt.LapTimeMs < driver.BestLapTimeMs)
-                ? evt.LapTimeMs
-                : driver.BestLapTimeMs;
+            var bestLap =
+                evt.Cuts == 0
+                && (driver.BestLapTimeMs is null || evt.LapTimeMs < driver.BestLapTimeMs)
+                    ? evt.LapTimeMs
+                    : driver.BestLapTimeMs;
 
             var sectors = _sectorTracker.OnLapCompleted(evt.CarId, evt.LapTimeMs);
             var lastSectors = sectors?.ToList() ?? driver.LastSectorTimesMs;
 
-            var bestSectors = sectors is not null && evt.Cuts == 0
-                ? UpdateBestSectors(driver.BestSectorTimesMs, sectors)
-                : driver.BestSectorTimesMs;
+            var bestSectors =
+                sectors is not null && evt.Cuts == 0
+                    ? UpdateBestSectors(driver.BestSectorTimesMs, sectors)
+                    : driver.BestSectorTimesMs;
 
-            liveTimingService.UpdateDriver(driver with
-            {
-                LastLapTimeMs = evt.LapTimeMs,
-                BestLapTimeMs = bestLap,
-                TotalLaps = driver.TotalLaps + 1,
-                LastLapCuts = evt.Cuts,
-                LastSectorTimesMs = lastSectors,
-                BestSectorTimesMs = bestSectors
-            });
+            liveTimingService.UpdateDriver(
+                driver with
+                {
+                    LastLapTimeMs = evt.LapTimeMs,
+                    BestLapTimeMs = bestLap,
+                    TotalLaps = driver.TotalLaps + 1,
+                    LastLapCuts = evt.Cuts,
+                    LastSectorTimesMs = lastSectors,
+                    BestSectorTimesMs = bestSectors,
+                }
+            );
         }
 
         // Merge leaderboard snapshot from event (AC sends bests+laps)
@@ -195,34 +229,45 @@ public sealed class RealTimeProcessor(
         {
             var entry = evt.Leaderboard[i];
             var entryDriver = liveTimingService.GetDriver(entry.CarId);
-            if (entryDriver is null) continue;
+            if (entryDriver is null)
+                continue;
 
             var leaderboardBest = entry.BestLapTimeMs > 0 ? entry.BestLapTimeMs : (int?)null;
             var mergedBest = (leaderboardBest, entryDriver.BestLapTimeMs) switch
             {
-                (null, _)    => entryDriver.BestLapTimeMs,
-                (_, null)    => leaderboardBest,
-                var (lb, eb) => Math.Min(lb.Value, eb.Value)
+                (null, _) => entryDriver.BestLapTimeMs,
+                (_, null) => leaderboardBest,
+                var (lb, eb) => Math.Min(lb.Value, eb.Value),
             };
 
-            liveTimingService.UpdateDriver(entryDriver with
-            {
-                Position = i + 1,
-                BestLapTimeMs = mergedBest,
-            });
+            liveTimingService.UpdateDriver(
+                entryDriver with
+                {
+                    Position = i + 1,
+                    BestLapTimeMs = mergedBest,
+                }
+            );
         }
 
         // UI: send full updated leaderboard (same as old notifier)
         var leaderboard = liveTimingService.GetLeaderboard();
-        await hubContext.Clients.All.SendAsync(TimingHubMethods.LeaderboardUpdated, leaderboard, ct);
+        await hubContext.Clients.All.SendAsync(
+            TimingHubMethods.LeaderboardUpdated,
+            leaderboard,
+            ct
+        );
     }
 
     private bool ShouldPushDriverToUi(int carId)
     {
-        if (DriverUiMinInterval <= TimeSpan.Zero) return true;
+        if (DriverUiMinInterval <= TimeSpan.Zero)
+            return true;
 
         var now = DateTimeOffset.UtcNow;
-        if (_lastDriverUiPush.TryGetValue(carId, out var last) && (now - last) < DriverUiMinInterval)
+        if (
+            _lastDriverUiPush.TryGetValue(carId, out var last)
+            && (now - last) < DriverUiMinInterval
+        )
             return false;
 
         _lastDriverUiPush[carId] = now;

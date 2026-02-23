@@ -12,5 +12,5 @@ public record CollisionEvent : SimEvent
 public enum CollisionType
 {
     Car = 10,
-    Environment = 11
+    Environment = 11,
 }

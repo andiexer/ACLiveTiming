@@ -11,14 +11,10 @@ public class LiveTimingService : ILiveTimingService
 
     public LiveSessionInfo? GetCurrentSession() => _currentSession;
 
-    public LiveDriverEntry? GetDriver(int carId) =>
-        _drivers.GetValueOrDefault(carId);
+    public LiveDriverEntry? GetDriver(int carId) => _drivers.GetValueOrDefault(carId);
 
     public IReadOnlyList<LiveDriverEntry> GetLeaderboard() =>
-        _drivers.Values
-            .Where(d => d.IsConnected)
-            .OrderBy(d => d.Position)
-            .ToList();
+        _drivers.Values.Where(d => d.IsConnected).OrderBy(d => d.Position).ToList();
 
     public void UpdateSession(LiveSessionInfo session)
     {
@@ -27,28 +23,49 @@ public class LiveTimingService : ILiveTimingService
 
     public void UpdateDriver(LiveDriverEntry driver)
     {
-        _drivers.AddOrUpdate(driver.CarId, driver, (_, existing) => existing with
-        {
-            DriverName = driver.DriverName,
-            DriverGuid = !string.IsNullOrEmpty(driver.DriverGuid) ? driver.DriverGuid : existing.DriverGuid,
-            Team = driver.Team ?? existing.Team,
-            CarModel = !string.IsNullOrEmpty(driver.CarModel) ? driver.CarModel : existing.CarModel,
-            CarSkin = driver.CarSkin ?? existing.CarSkin,
-            IsConnected = driver.IsConnected,
-            BestLapTimeMs = driver.BestLapTimeMs ?? existing.BestLapTimeMs,
-            LastLapTimeMs = driver.LastLapTimeMs ?? existing.LastLapTimeMs,
-            LastLapCuts = driver.LastLapTimeMs is not null ? driver.LastLapCuts : existing.LastLapCuts,
-            TotalLaps = driver.TotalLaps > 0 ? driver.TotalLaps : existing.TotalLaps,
-            Position = driver.Position > 0 ? driver.Position : existing.Position,
-            SplinePosition = driver.SplinePosition != 0 ? driver.SplinePosition : existing.SplinePosition,
-            LastSectorTimesMs = driver.LastSectorTimesMs.Count > 0 ? driver.LastSectorTimesMs : existing.LastSectorTimesMs,
-            BestSectorTimesMs = driver.BestSectorTimesMs.Count > 0 ? driver.BestSectorTimesMs : existing.BestSectorTimesMs
-        });
+        _drivers.AddOrUpdate(
+            driver.CarId,
+            driver,
+            (_, existing) =>
+                existing with
+                {
+                    DriverName = driver.DriverName,
+                    DriverGuid = !string.IsNullOrEmpty(driver.DriverGuid)
+                        ? driver.DriverGuid
+                        : existing.DriverGuid,
+                    Team = driver.Team ?? existing.Team,
+                    CarModel = !string.IsNullOrEmpty(driver.CarModel)
+                        ? driver.CarModel
+                        : existing.CarModel,
+                    CarSkin = driver.CarSkin ?? existing.CarSkin,
+                    IsConnected = driver.IsConnected,
+                    BestLapTimeMs = driver.BestLapTimeMs ?? existing.BestLapTimeMs,
+                    LastLapTimeMs = driver.LastLapTimeMs ?? existing.LastLapTimeMs,
+                    LastLapCuts = driver.LastLapTimeMs is not null
+                        ? driver.LastLapCuts
+                        : existing.LastLapCuts,
+                    TotalLaps = driver.TotalLaps > 0 ? driver.TotalLaps : existing.TotalLaps,
+                    Position = driver.Position > 0 ? driver.Position : existing.Position,
+                    SplinePosition =
+                        driver.SplinePosition != 0
+                            ? driver.SplinePosition
+                            : existing.SplinePosition,
+                    LastSectorTimesMs =
+                        driver.LastSectorTimesMs.Count > 0
+                            ? driver.LastSectorTimesMs
+                            : existing.LastSectorTimesMs,
+                    BestSectorTimesMs =
+                        driver.BestSectorTimesMs.Count > 0
+                            ? driver.BestSectorTimesMs
+                            : existing.BestSectorTimesMs,
+                }
+        );
     }
 
     public void UpdateDriverTelemetry(DriverTelemetry telemetry)
     {
-        if (!_drivers.TryGetValue(telemetry.CarId, out var existing)) return;
+        if (!_drivers.TryGetValue(telemetry.CarId, out var existing))
+            return;
 
         var updated = existing with
         {
@@ -58,7 +75,7 @@ public class LiveTimingService : ILiveTimingService
             SpeedKmh = telemetry.SpeedKmh,
             Gear = telemetry.Gear,
             EngineRpm = telemetry.EngineRpm,
-            IsConnected = true
+            IsConnected = true,
         };
 
         // Best-effort: if a concurrent update changed the entry between TryGetValue and here,
