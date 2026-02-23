@@ -1,6 +1,6 @@
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
-public record LapCompletedEvent
+public record LapCompletedEvent : SimEvent
 {
     public int CarId { get; init; }
     public int LapTimeMs { get; init; }

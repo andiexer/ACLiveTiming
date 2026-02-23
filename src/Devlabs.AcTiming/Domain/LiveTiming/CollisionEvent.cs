@@ -1,6 +1,6 @@
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
-public record CollisionEvent
+public record CollisionEvent : SimEvent
 {
     public int CarId { get; init; }
     public CollisionType Type { get; init; }
