@@ -1,0 +1,94 @@
+@using System.Globalization
+
+<div class="delta-indicator @RootClass" title="@Title">
+    <span class="delta-text">@DeltaText</span>
+    @if (ShowBar)
+    {
+        <div class="delta-bar @BarClass" aria-hidden="true">
+            @for (var i = 0; i < Segments; i++)
+            {
+                <span class="delta-seg"></span>
+            }
+            @for (var i = Segments; i < MaxSegments; i++)
+            {
+                <span class="delta-seg delta-seg-off"></span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Last lap time in milliseconds.</summary>
+    [Parameter] public int? LastMs { get; set; }
+
+    /// <summary>Reference time in milliseconds (usually best lap).</summary>
+    [Parameter] public int? ReferenceMs { get; set; }
+
+    /// <summary>Clamp in seconds for max bar fill (defaults to 1.5s).</summary>
+    [Parameter] public double ClampSeconds { get; set; } = 1.5;
+
+    /// <summary>How many segments the bar has.</summary>
+    [Parameter] public int MaxSegments { get; set; } = 5;
+
+    /// <summary>Show the segmented bar (text always shows).</summary>
+    [Parameter] public bool ShowBar { get; set; } = true;
+
+    /// <summary>If true, delta==0 shows "PB" instead of "+0.000".</summary>
+    [Parameter] public bool ShowPbLabel { get; set; } = true;
+
+    /// <summary>Optional: override the displayed text (keeps bar logic).</summary>
+    [Parameter] public string? TextOverride { get; set; }
+
+    private int? DeltaMs =>
+        (LastMs is null or 0 || ReferenceMs is null or 0) ? null : LastMs.Value - ReferenceMs.Value;
+
+    private bool HasDelta => DeltaMs is not null;
+
+    private string RootClass =>
+        !HasDelta ? "delta-na"
+        : DeltaMs == 0 ? "delta-pb"
+        : DeltaMs > 0 ? "delta-pos"
+        : "delta-neg";
+
+    private string BarClass =>
+        !HasDelta ? ""
+        : DeltaMs == 0 ? "bar-neutral"
+        : DeltaMs > 0 ? "bar-pos"
+        : "bar-neg";
+
+    private string DeltaText
+        => TextOverride ?? FormatDeltaText();
+
+    private string Title
+        => !HasDelta ? "No delta available" : $"Δ {(DeltaMs.Value / 1000.0):+0.000;-0.000;0.000}s";
+
+    private int Segments
+    {
+        get
+        {
+            if (!HasDelta) return 0;
+
+            var absSec = Math.Abs(DeltaMs!.Value) / 1000.0;
+            var clamped = Math.Min(absSec, ClampSeconds);
+
+            // Map [0..ClampSeconds] -> [0..MaxSegments]
+            var normalized = ClampSeconds <= 0 ? 0 : (clamped / ClampSeconds);
+            var raw = (int)Math.Round(normalized * MaxSegments, MidpointRounding.AwayFromZero);
+
+            return Math.Clamp(raw, 0, MaxSegments);
+        }
+    }
+
+    private string FormatDeltaText()
+    {
+        if (!HasDelta) return "—";
+
+        if (DeltaMs == 0 && ShowPbLabel) return "PB";
+
+        var sign = DeltaMs >= 0 ? "+" : "-";
+        var abs = Math.Abs(DeltaMs.Value) / 1000.0;
+
+        // Use invariant to guarantee dot separator in timing UI
+        return $"{sign}{abs.ToString("0.000", CultureInfo.InvariantCulture)}";
+    }
+}

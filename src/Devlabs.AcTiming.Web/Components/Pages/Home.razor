@@ -171,11 +171,10 @@
                                 <th>Car</th>
                                 <th>Best Lap</th>
                                 <th title="Most recent completed lap. Red = invalid (corner cut).">Last Lap</th>
+                                <th title="Delta to personal best">Δ</th>
                                 <th class="sector-th" title="Sector 1 time (last lap)">S1</th>
                                 <th class="sector-th" title="Sector 2 time (last lap)">S2</th>
                                 <th class="sector-th" title="Sector 3 time (last lap)">S3</th>
-                                <th title="Delta to personal best">Δ</th>
-                                <th>Laps</th>
                                 <th>
                                     <div class="gap-toggle"
                                          title="@(_showInterval ? "Gap to car ahead" : "Gap to leader")">
@@ -214,11 +213,10 @@
                                                   title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
                                         }
                                     </td>
+                                    <td><DeltaBar LastMs="@(driver.LastLapTimeMs)" ReferenceMs="@(driver.BestLapTimeMs)" /></td>
                                     <td class="sector-td @GetSectorColorClass(driver, 0, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 0)</td>
                                     <td class="sector-td @GetSectorColorClass(driver, 1, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 1)</td>
                                     <td class="sector-td @GetSectorColorClass(driver, 2, overallBestSectors)">@FormatSectorTime(driver.LastSectorTimesMs, 2)</td>
-                                    <td class="laptime @GetDeltaColorClass(driver)">@FormatDelta(driver)</td>
-                                    <td>@driver.TotalLaps</td>
                                     <td class="gap">
                                         @if (_showInterval)
                                         {
