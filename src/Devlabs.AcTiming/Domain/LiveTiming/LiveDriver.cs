@@ -1,6 +1,6 @@
 namespace Devlabs.AcTiming.Domain.LiveTiming;
 
-public record LiveDriverEntry : SimEvent
+public sealed record LiveDriver
 {
     public int CarId { get; init; }
     public required string DriverName { get; init; }
@@ -14,6 +14,8 @@ public record LiveDriverEntry : SimEvent
     public int? LastLapTimeMs { get; init; }
     public int TotalLaps { get; init; }
     public int Position { get; init; }
+    public int LastLapCuts { get; init; }
+    public int IncidentCount { get; init; }
 
     /// <summary>Normalized spline position on track (0.0 - 1.0).</summary>
     public float SplinePosition { get; init; }
@@ -33,11 +35,6 @@ public record LiveDriverEntry : SimEvent
     /// <summary>Current engine RPM.</summary>
     public int EngineRpm { get; init; }
 
-    /// <summary>Number of cuts (corner cuts) in the last completed lap. 0 = valid lap.</summary>
-    public int LastLapCuts { get; init; }
-
-    public List<int> LastSectorTimesMs { get; init; } = [];
-    public List<int> BestSectorTimesMs { get; init; } = [];
-
-    public int IncidentCount { get; init; }
+    public IReadOnlyList<int> LastSectorTimesMs { get; init; } = [];
+    public IReadOnlyList<int> BestSectorTimesMs { get; init; } = [];
 }

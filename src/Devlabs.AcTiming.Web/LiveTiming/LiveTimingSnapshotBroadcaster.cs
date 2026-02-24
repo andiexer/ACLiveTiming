@@ -15,7 +15,8 @@ public sealed class LiveTimingSnapshotBroadcaster(
         {
             var snapshot = new LiveTimingSnapshot(
                 liveTimingService.GetCurrentSession(),
-                liveTimingService.GetLeaderboard()
+                liveTimingService.GetLeaderboard(),
+                liveTimingService.GetFeedEvents()
             );
             await hubContext.Clients.All.SendAsync(
                 LiveTimingHubMethods.StateSnapshot,

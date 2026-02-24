@@ -1,17 +1,16 @@
+using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Domain.LiveTiming;
 
 namespace Devlabs.AcTiming.Application.LiveTiming;
 
 public interface ILiveTimingService
 {
-    LiveSessionInfo? GetCurrentSession();
-    LiveDriverEntry? GetDriver(int carId);
-    IReadOnlyList<LiveDriverEntry> GetLeaderboard();
+    void StartSession(SimEventSessionInfoReceived ev);
+    void ApplyEvent(SimEvent ev);
+    void EndSession();
 
-    void UpdateSession(LiveSessionInfo session);
-    void UpdateDriver(LiveDriverEntry driver);
-    void UpdateDriverTelemetry(DriverTelemetry telemetry);
-    void RemoveDriver(int carId);
-    void AddCollisionEvent(CollisionEvent collision);
-    void ClearSession();
+    SessionInfo? GetCurrentSession();
+    LiveDriver? GetDriver(int carId);
+    IReadOnlyList<LiveDriver> GetLeaderboard();
+    IReadOnlyList<SessionFeedEvent> GetFeedEvents();
 }

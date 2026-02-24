@@ -129,15 +129,15 @@
             <div class="panel events-panel">
                 <div class="panel-header">Events</div>
                 <div class="events-list">
-                    @if (_session is not null && _session.SessionEvents.Count > 0)
+                    @if (_feedEvents.Count > 0)
                     {
-                        @foreach (var evt in _session.SessionEvents.OrderByDescending(x => x.OccurredAtUtc).Take(15))
+                        @foreach (var evt in _feedEvents.OrderByDescending(x => x.OccurredAtUtc).Take(15))
                         {
                             <div class="event-item">
-                                <div class="event-indicator event-@evt.EventKind.ToString().ToLower()"></div>
+                                <div class="event-indicator event-@GetEventKindClass(evt)"></div>
                                 <div class="event-content">
                                     <span class="event-time">@evt.OccurredAtUtc.ToLocalTime().ToString("HH:mm:ss")</span>
-                                    <span class="event-message">@MapEventMessage(evt.Event)</span>
+                                    <span class="event-message">@MapEventMessage(evt)</span>
                                 </div>
                             </div>
                         }
@@ -354,8 +354,9 @@
 
     // ── SignalR & session state ────────────────────────────────────────────
     private HubConnection? _hubConnection;
-    private LiveSessionInfo? _session;
-    private List<LiveDriverEntry> _leaderboard = [];
+    private SessionInfo? _session;
+    private List<LiveDriver> _leaderboard = [];
+    private List<SessionFeedEvent> _feedEvents = [];
     private DateTime? _sessionStartedAt;
     private PeriodicTimer? _tickTimer;
     private CancellationTokenSource? _tickCts;
@@ -367,7 +368,7 @@
     // ── Driver selection ──────────────────────────────────────────────────
     private int? _selectedCarId;
 
-    private LiveDriverEntry? SelectedDriver =>
+    private LiveDriver? SelectedDriver =>
         _selectedCarId is null ? null : _leaderboard.FirstOrDefault(d => d.CarId == _selectedCarId);
 
     private void SelectDriver(int carId) =>
@@ -376,27 +377,32 @@
     private void ClearSelection() => _selectedCarId = null;
 
     // ── Events log ────────────────────────────────────────────────────────
-    private MarkupString MapEventMessage(SimEvent evt) => evt switch
+    private static string GetEventKindClass(SessionFeedEvent evt) => evt switch
     {
-        LiveSessionInfo sse =>
-            (MarkupString)$"Session started: {sse.SessionType} at {sse.TrackName}",
+        DriverJoinedFeed => "join",
+        DriverLeftFeed => "disconnect",
+        LapCompletedFeed => "lap",
+        CollisionFeed => "collision",
+        _ => "unknown"
+    };
 
-        LiveSessionEnded =>
-            (MarkupString)"Session ended",
+    private MarkupString MapEventMessage(SessionFeedEvent evt) => evt switch
+    {
+        DriverJoinedFeed je =>
+            (MarkupString)$"{DriverDotHtml(je.CarId)} {je.DriverName} joined",
 
-        DriverConnected je =>
-            (MarkupString)$"{DriverDotHtml(je.CarId)} {GetDriverName(je.CarId)} joined",
+        DriverLeftFeed de =>
+            (MarkupString)$"{DriverDotHtml(de.CarId)} {de.DriverName} disconnected",
 
-        DriverDisconnected de =>
-            (MarkupString)$"{DriverDotHtml(de.CarId)} {GetDriverName(de.CarId)} disconnected",
+        LapCompletedFeed lf =>
+            (MarkupString)$"{DriverDotHtml(lf.CarId)} {lf.DriverName} — {FormatLapTime(lf.LapTimeMs)}{(lf.Valid ? "" : " (invalid)")}",
 
-        CollisionEvent ce =>
+        CollisionFeed ce =>
             FormatIncidentMarkup(ce),
 
         _ =>
             (MarkupString)"Unknown event"
     };
-
 
     // ── Initialization ────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -415,6 +421,7 @@
                     ? DateTime.UtcNow - TimeSpan.FromMilliseconds(_session.ElapsedMs)
                     : null;
                 _leaderboard = snapshot.Leaderboard.ToList();
+                _feedEvents = snapshot.FeedEvents.ToList();
                 StateHasChanged();
             });
         });
@@ -443,26 +450,22 @@
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     // ── Formatting helpers ─────────────────────────────────────────────────
-    private MarkupString FormatIncidentMarkup(CollisionEvent evt)
+    private MarkupString FormatIncidentMarkup(CollisionFeed evt)
     {
         var dot1 = DriverDotHtml(evt.CarId);
-        var name1 = GetDriverName(evt.CarId);
 
-        if (evt.Type == CollisionType.Car && evt.OtherCarId.HasValue)
+        if (evt.OtherCarId.HasValue)
         {
             var dot2 = DriverDotHtml(evt.OtherCarId.Value);
-            var name2 = GetDriverName(evt.OtherCarId.Value);
-            return (MarkupString)$"{dot1}{name1} ↔ {dot2}{name2} — {evt.ImpactSpeedKmh:F0} km/h";
+            var name2 = evt.OtherDriverName ?? $"Car #{evt.OtherCarId.Value}";
+            return (MarkupString)$"{dot1}{evt.DriverName} ↔ {dot2}{name2} — {evt.ImpactSpeedKmh:F0} km/h";
         }
 
-        return (MarkupString)$"{dot1}{name1} environment crash — {evt.ImpactSpeedKmh:F0} km/h";
+        return (MarkupString)$"{dot1}{evt.DriverName} environment crash — {evt.ImpactSpeedKmh:F0} km/h";
     }
 
     private string DriverDotHtml(int carId) =>
         $"<span class=\"driver-dot\" style=\"background-color:{GetDriverColor(carId)}\"></span>";
-
-    private string GetDriverName(int carId) =>
-        _leaderboard.FirstOrDefault(d => d.CarId == carId)?.DriverName ?? $"Car #{carId}";
 
     private static readonly string[] DriverColors =
     [
@@ -499,14 +502,6 @@
         return FormatSignedGap(gap);
     }
 
-    private static string FormatDelta(LiveDriverEntry driver)
-    {
-        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "—";
-        var delta = driver.LastLapTimeMs.Value - driver.BestLapTimeMs.Value;
-        if (delta == 0) return "PB";
-        return FormatSignedGap(delta);
-    }
-
     private static string FormatSignedGap(int ms)
     {
         var sign = ms >= 0 ? "+" : "-";
@@ -521,7 +516,7 @@
         _ => (gear - 1).ToString()
     };
 
-    private static string GetLastLapColorClass(LiveDriverEntry driver, int? overallBest)
+    private static string GetLastLapColorClass(LiveDriver driver, int? overallBest)
     {
         if (driver.LastLapTimeMs is null or 0) return "";
         if (driver.LastLapCuts > 0) return "";
@@ -530,7 +525,7 @@
         return "lap-yellow";
     }
 
-    private static string FormatSectorTime(List<int> sectors, int index)
+    private static string FormatSectorTime(IReadOnlyList<int> sectors, int index)
     {
         if (sectors.Count <= index || sectors[index] <= 0) return "—";
         var ts = TimeSpan.FromMilliseconds(sectors[index]);
@@ -539,7 +534,7 @@
             : $"{ts.Seconds}.{ts.Milliseconds:D3}";
     }
 
-    private static string GetSectorColorClass(LiveDriverEntry driver, int index, int?[] overallBestSectors)
+    private static string GetSectorColorClass(LiveDriver driver, int index, int?[] overallBestSectors)
     {
         if (driver.LastSectorTimesMs.Count <= index || driver.LastSectorTimesMs[index] <= 0) return "";
         var sectorTime = driver.LastSectorTimesMs[index];
@@ -550,17 +545,10 @@
         return "lap-yellow";
     }
 
-    private static int? PossibleBestLap(LiveDriverEntry driver)
+    private static int? PossibleBestLap(LiveDriver driver)
     {
         if (driver.BestSectorTimesMs.Count < 3 || driver.BestSectorTimesMs.Any(s => s <= 0)) return null;
         return driver.BestSectorTimesMs[0] + driver.BestSectorTimesMs[1] + driver.BestSectorTimesMs[2];
-    }
-
-    private static string GetDeltaColorClass(LiveDriverEntry driver)
-    {
-        if (driver.LastLapTimeMs is null or 0 || driver.BestLapTimeMs is null or 0) return "";
-        var delta = driver.LastLapTimeMs.Value - driver.BestLapTimeMs.Value;
-        return delta == 0 ? "delta-pb" : "delta-positive";
     }
 
     private string FormatSessionTimer()

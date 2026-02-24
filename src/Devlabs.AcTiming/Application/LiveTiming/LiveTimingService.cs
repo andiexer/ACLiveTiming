@@ -1,129 +1,32 @@
-using System.Collections.Concurrent;
+using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Domain.LiveTiming;
 
 namespace Devlabs.AcTiming.Application.LiveTiming;
 
 public class LiveTimingService : ILiveTimingService
 {
-    private readonly ConcurrentDictionary<int, LiveDriverEntry> _drivers = new();
-    private LiveSessionInfo? _currentSession;
-    private readonly Lock _sessionEventsLock = new();
+    private LiveTimingSession? _session;
+    private readonly Lock _sessionLock = new();
 
-    public LiveSessionInfo? GetCurrentSession() => _currentSession;
-
-    public LiveDriverEntry? GetDriver(int carId) => _drivers.GetValueOrDefault(carId);
-
-    public IReadOnlyList<LiveDriverEntry> GetLeaderboard() =>
-        _drivers.Values.Where(d => d.IsConnected).OrderBy(d => d.Position).ToList();
-
-    public void UpdateSession(LiveSessionInfo session)
+    public void StartSession(SimEventSessionInfoReceived ev)
     {
-        _currentSession = session;
+        lock (_sessionLock)
+            _session = new LiveTimingSession(ev);
     }
 
-    public void UpdateDriver(LiveDriverEntry driver)
-    {
-        if (!_drivers.ContainsKey(driver.CarId))
-        {
-            lock (_sessionEventsLock)
-                _currentSession?.SessionEvents.Add(
-                    new SessionEvent(
-                        DateTime.UtcNow,
-                        EventKind.Join,
-                        new DriverConnected(driver.CarId, driver.DriverName)
-                    )
-                );
-        }
+    public void ApplyEvent(SimEvent ev) => _session?.Apply(ev);
 
-        _drivers.AddOrUpdate(
-            driver.CarId,
-            driver,
-            (_, existing) =>
-                existing with
-                {
-                    DriverName = driver.DriverName,
-                    DriverGuid = !string.IsNullOrEmpty(driver.DriverGuid)
-                        ? driver.DriverGuid
-                        : existing.DriverGuid,
-                    Team = driver.Team ?? existing.Team,
-                    CarModel = !string.IsNullOrEmpty(driver.CarModel)
-                        ? driver.CarModel
-                        : existing.CarModel,
-                    CarSkin = driver.CarSkin ?? existing.CarSkin,
-                    IsConnected = driver.IsConnected,
-                    BestLapTimeMs = driver.BestLapTimeMs ?? existing.BestLapTimeMs,
-                    LastLapTimeMs = driver.LastLapTimeMs ?? existing.LastLapTimeMs,
-                    LastLapCuts = driver.LastLapTimeMs is not null
-                        ? driver.LastLapCuts
-                        : existing.LastLapCuts,
-                    TotalLaps = driver.TotalLaps > 0 ? driver.TotalLaps : existing.TotalLaps,
-                    Position = driver.Position > 0 ? driver.Position : existing.Position,
-                    SplinePosition =
-                        driver.SplinePosition != 0
-                            ? driver.SplinePosition
-                            : existing.SplinePosition,
-                    LastSectorTimesMs =
-                        driver.LastSectorTimesMs.Count > 0
-                            ? driver.LastSectorTimesMs
-                            : existing.LastSectorTimesMs,
-                    BestSectorTimesMs =
-                        driver.BestSectorTimesMs.Count > 0
-                            ? driver.BestSectorTimesMs
-                            : existing.BestSectorTimesMs,
-                }
-        );
+    public void EndSession()
+    {
+        lock (_sessionLock)
+            _session = null;
     }
 
-    public void UpdateDriverTelemetry(DriverTelemetry telemetry)
-    {
-        if (!_drivers.TryGetValue(telemetry.CarId, out var existing))
-            return;
+    public SessionInfo? GetCurrentSession() => _session?.Info;
 
-        var updated = existing with
-        {
-            SplinePosition = telemetry.SplinePosition,
-            WorldX = telemetry.WorldX,
-            WorldZ = telemetry.WorldZ,
-            SpeedKmh = telemetry.SpeedKmh,
-            Gear = telemetry.Gear,
-            EngineRpm = telemetry.EngineRpm,
-            IsConnected = true,
-        };
+    public LiveDriver? GetDriver(int carId) => _session?.GetDriver(carId);
 
-        // Best-effort: if a concurrent update changed the entry between TryGetValue and here,
-        // this telemetry tick is simply dropped. At CarUpdate frequency this is harmless.
-        _drivers.TryUpdate(telemetry.CarId, updated, existing);
-    }
+    public IReadOnlyList<LiveDriver> GetLeaderboard() => _session?.GetLeaderboard() ?? [];
 
-    public void RemoveDriver(int carId)
-    {
-        if (_drivers.TryGetValue(carId, out var driver))
-        {
-            _drivers[carId] = driver with { IsConnected = false };
-        }
-    }
-
-    public void AddCollisionEvent(CollisionEvent collision)
-    {
-        lock (_sessionEventsLock)
-            _currentSession?.SessionEvents.Add(
-                new SessionEvent(collision.OccurredAtUtc, EventKind.Collision, collision)
-            );
-
-        IncrementIncident(collision.CarId);
-        if (collision.OtherCarId.HasValue)
-            IncrementIncident(collision.OtherCarId.Value);
-    }
-
-    private void IncrementIncident(int carId)
-    {
-        if (_drivers.TryGetValue(carId, out var driver))
-            _drivers[carId] = driver with { IncidentCount = driver.IncidentCount + 1 };
-    }
-
-    public void ClearSession()
-    {
-        _currentSession = null;
-        _drivers.Clear();
-    }
+    public IReadOnlyList<SessionFeedEvent> GetFeedEvents() => _session?.GetFeedEvents() ?? [];
 }
