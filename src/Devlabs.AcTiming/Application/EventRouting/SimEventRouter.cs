@@ -8,10 +8,12 @@ public sealed class SimEventRouter(
     ILogger<SimEventRouter> logger,
     ISimEventSource source,
     RealtimeBus realtimeBus,
-    PersistenceBus persistenceBus
+    PersistenceBus persistenceBus,
+    IPitLaneProvider pitLaneProvider
 ) : BackgroundService
 {
     private readonly SectorTimingTracker _sectorTracker = new();
+    private readonly PitStatusTracker _pitTracker = new();
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -50,30 +52,41 @@ public sealed class SimEventRouter(
         // Tracker lifecycle management
         switch (ev)
         {
-            case SimEventSessionInfoReceived:
+            case SimEventSessionInfoReceived s:
+                _sectorTracker.ResetAll();
+                _pitTracker.ResetAll();
+                _pitTracker.LoadSpline(pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig));
+                break;
             case SimEventSessionEnded:
                 _sectorTracker.ResetAll();
+                _pitTracker.ResetAll();
                 break;
             case SimEventDriverDisconnected d:
                 _sectorTracker.ResetCar(d.CarId);
+                _pitTracker.ResetCar(d.CarId);
                 break;
         }
 
-        // For telemetry: emit sector crossing before the original event
+        // For telemetry: emit enrichment events before the original telemetry event
         if (ev is SimEventTelemetryUpdated t)
         {
             var crossing = _sectorTracker.ProcessUpdate(t.CarId, t.SplinePosition);
             if (crossing is not null)
             {
-                var sectorEvent = new SimEventSectorCrossed(
-                    t.CarId,
-                    crossing.SectorIndex,
-                    crossing.SectorTimeMs,
-                    crossing.CompletedSectors,
-                    false
+                Publish(
+                    new SimEventSectorCrossed(
+                        t.CarId,
+                        crossing.SectorIndex,
+                        crossing.SectorTimeMs,
+                        crossing.CompletedSectors,
+                        false
+                    )
                 );
-                Publish(sectorEvent);
             }
+
+            var newPitStatus = _pitTracker.Process(t.CarId, t.WorldX, t.WorldZ);
+            if (newPitStatus is not null)
+                Publish(new SimEventPitStatusChanged(t.CarId, newPitStatus.Value));
         }
 
         // For lap completed: write lap event first, then S3 sector finalization

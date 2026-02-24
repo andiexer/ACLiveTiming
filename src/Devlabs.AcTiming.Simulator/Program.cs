@@ -57,7 +57,7 @@ await Send(
         .WriteByte(0) // current session index
         .WriteByte(1) // session count
         .WriteStringW("AC Timing Dev Server")
-        .WriteString("simulator")
+        .WriteString("csp/7/00/:/asdf/simulator") // sending track identifieres like content manager will do
         .WriteString("") // track config
         .WriteString("Practice")
         .WriteByte(1) // type: Practice

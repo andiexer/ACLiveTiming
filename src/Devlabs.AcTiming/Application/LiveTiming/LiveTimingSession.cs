@@ -46,6 +46,9 @@ public sealed class LiveTimingSession
             case SimEventLapCompleted l:
                 HandleLapCompleted(l);
                 break;
+            case SimEventPitStatusChanged p:
+                HandlePitStatus(p);
+                break;
             case SimEventCollisionDetected c:
                 HandleCollision(c);
                 break;
@@ -227,6 +230,12 @@ public sealed class LiveTimingSession
     {
         if (_drivers.TryGetValue(carId, out var driver))
             _drivers[carId] = driver with { IncidentCount = driver.IncidentCount + 1 };
+    }
+
+    private void HandlePitStatus(SimEventPitStatusChanged ev)
+    {
+        if (_drivers.TryGetValue(ev.CarId, out var driver))
+            _drivers.TryUpdate(ev.CarId, driver with { IsInPit = ev.IsInPit }, driver);
     }
 
     private void HandleDisconnect(SimEventDriverDisconnected ev)

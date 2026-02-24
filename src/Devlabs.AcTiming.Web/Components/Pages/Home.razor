@@ -200,6 +200,10 @@
                                     <td class="driver-name">
                                         <span class="driver-pos-bubble"
                                               style="background-color: @GetDriverColor(driver.CarId)">@driver.CarId</span>@driver.DriverName
+                                        @if (driver.IsInPit)
+                                        {
+                                            <span class="pit-badge">PIT</span>
+                                        }
                                     </td>
                                     <td class="car-name">
                                         <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver"/>
@@ -383,6 +387,7 @@
         DriverLeftFeed => "disconnect",
         LapCompletedFeed => "lap",
         CollisionFeed => "collision",
+        DriverInPitFeed => "pit",
         _ => "unknown"
     };
 
@@ -399,6 +404,9 @@
 
         CollisionFeed ce =>
             FormatIncidentMarkup(ce),
+
+        DriverInPitFeed pe =>
+            (MarkupString)$"{DriverDotHtml(pe.CarId)} {pe.DriverName} entered the pits",
 
         _ =>
             (MarkupString)"Unknown event"

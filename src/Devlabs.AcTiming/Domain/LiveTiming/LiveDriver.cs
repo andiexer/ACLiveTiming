@@ -35,6 +35,8 @@ public sealed record LiveDriver
     /// <summary>Current engine RPM.</summary>
     public int EngineRpm { get; init; }
 
+    public bool IsInPit { get; init; }
+
     public IReadOnlyList<int> LastSectorTimesMs { get; init; } = [];
     public IReadOnlyList<int> BestSectorTimesMs { get; init; } = [];
 }
