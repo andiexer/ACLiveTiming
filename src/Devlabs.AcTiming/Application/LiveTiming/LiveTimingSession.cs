@@ -49,6 +49,7 @@ public sealed class LiveTimingSession
             case SimEventPitStatusChanged p:
                 HandlePitStatus(p);
                 break;
+
             case SimEventCollisionDetected c:
                 HandleCollision(c);
                 break;

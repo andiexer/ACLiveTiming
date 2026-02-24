@@ -67,7 +67,7 @@ public sealed class SimEventRouter(
                 break;
         }
 
-        // For telemetry: emit enrichment events before the original telemetry event
+        // For telemetry: emit sector crossing before the original event
         if (ev is SimEventTelemetryUpdated t)
         {
             var crossing = _sectorTracker.ProcessUpdate(t.CarId, t.SplinePosition);
@@ -86,7 +86,9 @@ public sealed class SimEventRouter(
 
             var newPitStatus = _pitTracker.Process(t.CarId, t.WorldX, t.WorldZ);
             if (newPitStatus is not null)
+            {
                 Publish(new SimEventPitStatusChanged(t.CarId, newPitStatus.Value));
+            }
         }
 
         // For lap completed: write lap event first, then S3 sector finalization
