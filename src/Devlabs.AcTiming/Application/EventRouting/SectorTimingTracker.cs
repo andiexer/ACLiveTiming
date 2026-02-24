@@ -1,4 +1,4 @@
-namespace Devlabs.AcTiming.Application.LiveTiming;
+namespace Devlabs.AcTiming.Application.EventRouting;
 
 /// <summary>
 /// Tracks per-car sector progress from normalized spline position.

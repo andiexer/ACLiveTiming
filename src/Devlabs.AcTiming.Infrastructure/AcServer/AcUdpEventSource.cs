@@ -2,11 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using Devlabs.AcTiming.Application.Shared;
-using Devlabs.AcTiming.Domain.LiveTiming;
 using Devlabs.AcTiming.Domain.Shared;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using CollisionType = Devlabs.AcTiming.Application.Shared.CollisionType;
 
 namespace Devlabs.AcTiming.Infrastructure.AcServer;
 
@@ -159,8 +159,7 @@ public sealed class AcUdpEventSource(
                 break;
 
             case AcProtocol.EndSession:
-                logger.LogDebug("EndSession received");
-                _events.Writer.TryWrite(new LiveSessionEnded());
+                _events.Writer.TryWrite(new SimEventSessionEnded());
                 break;
 
             case AcProtocol.NewConnection:
@@ -191,14 +190,6 @@ public sealed class AcUdpEventSource(
                 HandleClientEvent(data);
                 break;
 
-            case AcProtocol.LapSplit:
-                logger.LogInformation(
-                    "LapSplit raw ({Len} bytes): {Hex}",
-                    data.Length,
-                    Convert.ToHexString(data)
-                );
-                break;
-
             default:
                 logger.LogDebug("Unhandled packet type: {PacketType}", packetType);
                 break;
@@ -208,57 +199,30 @@ public sealed class AcUdpEventSource(
     private void HandleSessionInfo(byte[] data)
     {
         var info = AcPacketParser.ParseSessionInfo(data);
-        logger.LogDebug(
-            "SessionInfo: Server={Server} Track={Track}/{Config} Session={Name} Type={Type} Time={Time}min Laps={Laps} Elapsed={Elapsed}ms Ambient={Ambient}°C Road={Road}°C",
+        var session = new SimEventSessionInfoReceived(
             info.ServerName,
             info.Track,
             info.TrackConfig,
-            info.Name,
-            info.Type,
+            (SessionType)info.Type,
             info.Time,
             info.Laps,
             info.ElapsedMs,
             info.AmbientTemp,
             info.RoadTemp
         );
-
-        var session = new LiveSessionInfo
-        {
-            ServerName = info.ServerName,
-            TrackName = info.Track,
-            TrackConfig = info.TrackConfig,
-            SessionType = (SessionType)info.Type,
-            TimeLimitMinutes = info.Time,
-            LapLimit = info.Laps,
-            ElapsedMs = info.ElapsedMs,
-            AmbientTemp = info.AmbientTemp,
-            RoadTemp = info.RoadTemp,
-        };
-
         _events.Writer.TryWrite(session);
     }
 
     private void HandleNewConnection(byte[] data)
     {
         var conn = AcPacketParser.ParseNewConnection(data);
-        logger.LogDebug(
-            "NewConnection: Driver={Name} GUID={Guid} CarId={CarId} Car={Model} Skin={Skin}",
-            conn.DriverName,
-            conn.DriverGuid,
+        var entry = new SimEventDriverConnected(
             conn.CarId,
             conn.CarModel,
-            conn.CarSkin
+            conn.CarModel,
+            conn.DriverName,
+            conn.DriverGuid
         );
-
-        var entry = new LiveDriverEntry
-        {
-            CarId = conn.CarId,
-            DriverName = conn.DriverName,
-            DriverGuid = conn.DriverGuid,
-            CarModel = conn.CarModel,
-            CarSkin = conn.CarSkin,
-            IsConnected = true,
-        };
 
         _events.Writer.TryWrite(entry);
     }
@@ -266,15 +230,14 @@ public sealed class AcUdpEventSource(
     private void HandleConnectionClosed(byte[] data)
     {
         var conn = AcPacketParser.ParseConnectionClosed(data);
-        logger.LogDebug(
-            "ConnectionClosed: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
-            conn.DriverName,
-            conn.DriverGuid,
+        var entry = new SimEventDriverDisconnected(
             conn.CarId,
-            conn.CarModel
+            conn.CarModel,
+            conn.CarModel,
+            conn.DriverName,
+            conn.DriverGuid
         );
-
-        _events.Writer.TryWrite(new DriverDisconnected(conn.CarId));
+        _events.Writer.TryWrite(entry);
     }
 
     private void HandleCarInfo(byte[] data)
@@ -283,24 +246,13 @@ public sealed class AcUdpEventSource(
         if (!info.IsConnected)
             return;
 
-        logger.LogInformation(
-            "CarInfo: Driver={Name} GUID={Guid} CarId={CarId} Car={Model}",
-            info.DriverName,
-            info.DriverGuid,
+        var entry = new SimEventCarInfoReceived(
             info.CarId,
+            info.CarModel,
+            info.CarSkin,
+            info.DriverName,
             info.CarModel
         );
-
-        var entry = new LiveDriverEntry
-        {
-            CarId = info.CarId,
-            DriverName = info.DriverName,
-            DriverGuid = info.DriverGuid,
-            Team = info.DriverTeam,
-            CarModel = info.CarModel,
-            CarSkin = info.CarSkin,
-            IsConnected = true,
-        };
 
         _events.Writer.TryWrite(entry);
     }
@@ -311,16 +263,15 @@ public sealed class AcUdpEventSource(
         var v = update.Velocity;
         var speedKmh = MathF.Sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z) * 3.6f;
 
-        var telemetry = new DriverTelemetry
-        {
-            CarId = update.CarId,
-            SplinePosition = update.NormalizedSplinePos,
-            WorldX = update.Position.X,
-            WorldZ = update.Position.Z,
-            SpeedKmh = speedKmh,
-            Gear = update.Gear,
-            EngineRpm = update.EngineRpm,
-        };
+        var telemetry = new SimEventTelemetryUpdated(
+            update.CarId,
+            update.NormalizedSplinePos,
+            update.Position.X,
+            update.Position.Z,
+            speedKmh,
+            update.Gear,
+            update.EngineRpm
+        );
 
         _events.Writer.TryWrite(telemetry);
     }
@@ -341,20 +292,14 @@ public sealed class AcUdpEventSource(
             )
         );
 
-        var evt = new LapCompletedEvent
-        {
-            CarId = lapInfo.CarId,
-            LapTimeMs = lapInfo.LapTimeMs,
-            Cuts = lapInfo.Cuts,
-            Leaderboard = lapInfo
-                .Leaderboard.Select(e => new LeaderboardEntry
-                {
-                    CarId = e.CarId,
-                    BestLapTimeMs = e.LapTimeMs,
-                    TotalLaps = e.Laps,
-                })
-                .ToList(),
-        };
+        var evt = new SimEventLapCompleted(
+            lapInfo.CarId,
+            lapInfo.LapTimeMs,
+            lapInfo.Cuts,
+            lapInfo
+                .Leaderboard.Select(e => new LeaderBoardEntry(e.CarId, e.LapTimeMs, e.Laps))
+                .ToList()
+        );
 
         _events.Writer.TryWrite(evt);
     }
@@ -370,14 +315,13 @@ public sealed class AcUdpEventSource(
             evt.ImpactSpeed
         );
 
-        var collision = new CollisionEvent
-        {
-            CarId = evt.CarId,
-            Type = (CollisionType)evt.EventType,
-            OtherCarId = evt.OtherCarId,
-            ImpactSpeedKmh = evt.ImpactSpeed,
-            OccurredAtUtc = DateTime.UtcNow,
-        };
+        var collision = new SimEventCollisionDetected(
+            evt.CarId,
+            (CollisionType)evt.EventType,
+            evt.OtherCarId,
+            evt.ImpactSpeed,
+            DateTime.UtcNow
+        );
 
         _events.Writer.TryWrite(collision);
     }

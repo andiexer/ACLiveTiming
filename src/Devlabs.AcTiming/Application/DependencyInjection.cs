@@ -1,7 +1,7 @@
 using System.Threading.Channels;
+using Devlabs.AcTiming.Application.EventRouting;
 using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
-using Devlabs.AcTiming.Domain.LiveTiming;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Devlabs.AcTiming.Application;
@@ -36,6 +36,7 @@ public static class DependencyInjection
             )
         );
 
+        services.AddSingleton<ILiveTimingService, LiveTimingService>();
         services.AddHostedService<SimEventRouter>();
         services.AddHostedService<RealTimeProcessor>();
     }
