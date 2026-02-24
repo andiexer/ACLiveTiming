@@ -219,7 +219,7 @@ public sealed class AcUdpEventSource(
         var entry = new SimEventDriverConnected(
             conn.CarId,
             conn.CarModel,
-            conn.CarModel,
+            conn.CarSkin,
             conn.DriverName,
             conn.DriverGuid
         );
