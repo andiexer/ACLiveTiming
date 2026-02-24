@@ -4,7 +4,7 @@ internal sealed class PitStatusTracker
 {
     // 15 m threshold — pit boxes at Silverstone are ~8.3 m from the pit lane centerline spline,
     // so 8 m was too tight. 15 m covers boxes while remaining safely clear of the racing track.
-    private const float ThresholdSq = 15f * 15f;
+    private const float ThresholdSq = 3f * 3f;
 
     private (float X, float Z)[]? _points;
     private readonly Dictionary<int, bool> _lastStatus = new();

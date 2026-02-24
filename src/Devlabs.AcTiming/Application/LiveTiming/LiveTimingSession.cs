@@ -49,7 +49,6 @@ public sealed class LiveTimingSession
             case SimEventPitStatusChanged p:
                 HandlePitStatus(p);
                 break;
-
             case SimEventCollisionDetected c:
                 HandleCollision(c);
                 break;
@@ -236,7 +235,16 @@ public sealed class LiveTimingSession
     private void HandlePitStatus(SimEventPitStatusChanged ev)
     {
         if (_drivers.TryGetValue(ev.CarId, out var driver))
+        {
             _drivers.TryUpdate(ev.CarId, driver with { IsInPit = ev.IsInPit }, driver);
+            if (ev.IsInPit)
+            {
+                lock (_feedLock)
+                    _feedEvents.Add(
+                        new DriverInPitFeed(DateTime.UtcNow, ev.CarId, driver.DriverName)
+                    );
+            }
+        }
     }
 
     private void HandleDisconnect(SimEventDriverDisconnected ev)
