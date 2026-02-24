@@ -64,6 +64,15 @@ public sealed class RealTimeProcessor(
                         liveTimingService.ApplyEvent(d);
                         break;
 
+                    case SimEventPitStatusChanged p:
+                        logger.LogInformation(
+                            "Pit status changed: Car {CarId} is now {Status}",
+                            p.CarId,
+                            p.IsInPit ? "IN PIT" : "ON TRACK"
+                        );
+                        liveTimingService.ApplyEvent(p);
+                        break;
+
                     default:
                         liveTimingService.ApplyEvent(ev);
                         break;

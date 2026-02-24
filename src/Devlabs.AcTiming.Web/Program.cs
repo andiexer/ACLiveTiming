@@ -1,4 +1,5 @@
 using Devlabs.AcTiming.Application;
+using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Web.Components;
@@ -15,6 +16,7 @@ builder.Services.AddInfrastructureLayer(builder.Configuration);
 
 builder.Services.AddHostedService<LiveTimingSnapshotBroadcaster>();
 builder.Services.AddSingleton<TrackMapService>();
+builder.Services.AddSingleton<IPitLaneProvider, PitLaneSplineLoader>();
 
 var app = builder.Build();
 

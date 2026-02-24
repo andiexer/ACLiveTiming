@@ -314,6 +314,7 @@
 .event-indicator.event-disconnect { background: var(--text-muted); }
 .event-indicator.event-join       { background: var(--accent);     }
 .event-indicator.event-collision  { background: var(--danger);     }
+.event-indicator.event-pit        { background: var(--warning);    }
 
 .event-content {
     display: flex;
@@ -465,6 +466,20 @@
 
 .timing-table .disconnected {
     opacity: 0.4;
+}
+
+.pit-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #1a1a1a;
+    background: #f59e0b;
+    vertical-align: middle;
 }
 
 /* ── Gap / Interval toggle ──────────────────────────────────────────────── */

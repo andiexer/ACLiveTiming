@@ -7,6 +7,7 @@ namespace Devlabs.AcTiming.Domain.LiveTiming;
 [JsonDerivedType(typeof(DriverLeftFeed), "driver-left")]
 [JsonDerivedType(typeof(LapCompletedFeed), "lap-completed")]
 [JsonDerivedType(typeof(CollisionFeed), "collision")]
+[JsonDerivedType(typeof(DriverInPitFeed), "driver-in-pit")]
 public abstract record SessionFeedEvent(DateTime OccurredAtUtc);
 
 public record DriverJoinedFeed(DateTime OccurredAtUtc, int CarId, string DriverName)
@@ -31,3 +32,6 @@ public record CollisionFeed(
     string? OtherDriverName,
     float ImpactSpeedKmh
 ) : SessionFeedEvent(OccurredAtUtc);
+
+public record DriverInPitFeed(DateTime OccurredAtUtc, int CarId, string DriverName)
+    : SessionFeedEvent(OccurredAtUtc);

@@ -201,7 +201,7 @@ public sealed class AcUdpEventSource(
         var info = AcPacketParser.ParseSessionInfo(data);
         var session = new SimEventSessionInfoReceived(
             info.ServerName,
-            info.Track,
+            TrackNameSanitizer.Sanitize(info.Track),
             info.TrackConfig,
             (SessionType)info.Type,
             info.Time,
@@ -219,7 +219,7 @@ public sealed class AcUdpEventSource(
         var entry = new SimEventDriverConnected(
             conn.CarId,
             conn.CarModel,
-            conn.CarModel,
+            conn.CarSkin,
             conn.DriverName,
             conn.DriverGuid
         );
