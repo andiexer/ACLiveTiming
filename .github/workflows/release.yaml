@@ -30,7 +30,7 @@ jobs:
 
       - name: Publish
         run: |
-          dotnet publish ./src/Devlabs.AcTiming.Web.csproj \
+          dotnet publish ./src/Devlabs.AcTiming.Web/Devlabs.AcTiming.Web.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained true \
