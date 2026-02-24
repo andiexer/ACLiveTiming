@@ -1,6 +1,6 @@
 namespace Devlabs.AcTiming.Application.EventRouting;
 
-internal sealed class PitStatusTracker
+public sealed class PitStatusTracker
 {
     // 15 m threshold — pit boxes at Silverstone are ~8.3 m from the pit lane centerline spline,
     // so 8 m was too tight. 15 m covers boxes while remaining safely clear of the racing track.
