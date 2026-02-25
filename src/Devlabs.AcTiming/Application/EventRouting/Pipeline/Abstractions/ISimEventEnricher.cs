@@ -1,6 +1,6 @@
 using Devlabs.AcTiming.Application.Shared;
 
-namespace Devlabs.AcTiming.Application.EventRouting.Enricher;
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 
 public interface ISimEventEnricher
 {

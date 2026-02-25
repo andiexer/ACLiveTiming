@@ -5,4 +5,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Devlabs.AcTiming\Devlabs.AcTiming.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="PitLaneGenerator.cs" />
+  </ItemGroup>
 </Project>

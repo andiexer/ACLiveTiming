@@ -101,6 +101,31 @@ var lapStartTick = new long[count];
 var gears = new int[count];
 var rpms = new float[count];
 
+// ── Pit lane geometry & per-driver pit state ─────────────────────────────────
+// Image coordinate system (map.ini: SCALE_FACTOR=2, Z_OFFSET=500):
+//   py = (worldZ + 500) / 2  →  worldZ = py × 2 − 500
+//   py=180 (top of pit)  → worldZ = −140
+//   py=320 (bottom of pit) → worldZ = +140
+// Cars enter from the TOP of the image and drive DOWN (increasing worldZ).
+const float pitX = 500f;
+const float pitEntryZ = -140f; // py=180, top of image
+const float pitExitZ = 140f; // py=320, bottom of image
+const float pitLaneLength = 280f; // |140 − (−140)| = 280 m
+const float pitMaxSpeedMs = 80f / 3.6f; // 80 km/h ≈ 22.2 m/s
+const float pitStopDurationMs = 5_000f; // 5 seconds stopped in pit box
+
+// Pit lane spline range on the main track
+// On the ellipse: spline 0.0 = rightmost point (600,0), going counterclockwise
+// worldZ=−140 → sin(angle)=−0.4 → angle≈5.87 rad → spline≈0.935 (upper-right, entry)
+// worldZ=+140 → sin(angle)=+0.4 → angle≈0.41 rad → spline≈0.065 (lower-right, exit)
+const float pitEntrySpline = 0.935f; // where car leaves the racing line
+const float pitExitSpline = 0.065f; // where car rejoins the racing line
+
+// Per-driver pit state
+var pitPhase = new int[count]; // 0=racing, 1=entering, 2=stopped, 3=exiting
+var pitProgress = new float[count]; // 0..1 along the pit lane (entry→exit)
+var pitStopTimer = new float[count]; // ms remaining at pit box
+
 // Spread drivers evenly around the track so the UI is instantly crowded.
 // Initialise lapStartTick so the first lap time is realistic (as if each
 // driver started from the beginning of the lap at the appropriate offset).
@@ -134,6 +159,10 @@ try
         // ── Advance every driver, detect lap completions ──────────────────
         for (var i = 0; i < count; i++)
         {
+            // Don't advance spline while in pit lane
+            if (pitPhase[i] > 0)
+                continue;
+
             var lapMs = baseLapTimes[i] + lapVariance[i];
             splinePos[i] += (float)tickMs / lapMs;
 
@@ -177,46 +206,120 @@ try
         // ── CarUpdate for every driver (53) ───────────────────────────────
         for (var i = 0; i < count; i++)
         {
-            var angle = splinePos[i] * 2f * MathF.PI;
-            var lapMs = baseLapTimes[i] + lapVariance[i];
-            // Throttle 0.0 = heavy braking (corners), 1.0 = full throttle (straights)
-            // Uses full [0.0, 1.0] range so braking logic actually triggers
-            var throttle = MathF.Abs(MathF.Sin(angle * 2f));
+            float posX,
+                posZ;
+            float velX = 0f,
+                velZ = 0f;
 
-            // Speed varies with throttle: 35%–100% of top speed (corners slow right down)
-            const float TopSpeedMs = 250f / 3.6f; // ~69 m/s = 250 km/h
-            var speed = TopSpeedMs * (0.35f + 0.65f * throttle);
-
-            var posX = Rx * MathF.Cos(angle);
-            var posZ = Rz * MathF.Sin(angle);
-            var velX = -speed * MathF.Sin(angle);
-            var velZ = speed * MathF.Cos(angle);
-
-            // RPM dynamics: ~3s to rev from idle to redline, ~2s to drop under braking
-            // At 250ms tick that's ~600 rpm/tick accel, ~900 rpm/tick brake
-            const float RpmAccel = 650f;
-            const float RpmBrake = 950f;
-            const float Redline = 7_800f;
-            const float ShiftDownRpm = 2_800f;
-            const float ShiftUpRpm = 7_500f;
-
-            var rpmDelta = throttle >= 0.45f ? RpmAccel * throttle : -RpmBrake * (1f - throttle);
-
-            rpms[i] = Math.Clamp(rpms[i] + rpmDelta, 1_200f, Redline);
-
-            if (rpms[i] >= ShiftUpRpm && gears[i] < 6)
+            // ── Check for pit entry trigger ───────────────────────────────
+            // ~8% chance when crossing the pit entry zone, not already pitting
+            if (pitPhase[i] == 0 && splinePos[i] is > 0.92f and < 0.95f && rng.NextDouble() < 0.08)
             {
-                gears[i]++;
-                rpms[i] = 4_200f;
-            }
-            else if (rpms[i] <= ShiftDownRpm && gears[i] > 1)
-            {
-                gears[i]--;
-                rpms[i] = 6_000f;
+                pitPhase[i] = 1;
+                pitProgress[i] = 0f;
+                Console.WriteLine($"  Pit:  {drivers[i].Name, -20} entering pit lane");
             }
 
-            var gear = (byte)gears[i];
-            var rpm = (ushort)Math.Clamp(rpms[i] + rng.Next(-150, 150), 1_000, 8_000);
+            if (pitPhase[i] > 0)
+            {
+                // ── Pit lane simulation ───────────────────────────────────
+                // Car moves along the pit lane at max 80 km/h
+                var pitDistancePerTick = pitMaxSpeedMs * (tickMs / 1000f);
+                var progressPerTick = pitDistancePerTick / pitLaneLength;
+
+                switch (pitPhase[i])
+                {
+                    case 1: // driving through pit lane toward pit box (midpoint)
+                        pitProgress[i] += progressPerTick;
+                        if (pitProgress[i] >= 0.5f)
+                        {
+                            pitProgress[i] = 0.5f;
+                            pitPhase[i] = 2;
+                            pitStopTimer[i] = pitStopDurationMs;
+                            Console.WriteLine($"  Pit:  {drivers[i].Name, -20} stopped in pit box");
+                        }
+                        break;
+
+                    case 2: // stopped at pit box
+                        pitStopTimer[i] -= tickMs;
+                        if (pitStopTimer[i] <= 0)
+                        {
+                            pitPhase[i] = 3;
+                            Console.WriteLine($"  Pit:  {drivers[i].Name, -20} leaving pit box");
+                        }
+                        break;
+
+                    case 3: // driving out of pit lane
+                        pitProgress[i] += progressPerTick;
+                        if (pitProgress[i] >= 1.0f)
+                        {
+                            pitPhase[i] = 0;
+                            pitProgress[i] = 1.0f; // stay at exit position this tick; reset next tick
+                            splinePos[i] = pitExitSpline;
+                            Console.WriteLine($"  Pit:  {drivers[i].Name, -20} back on track");
+                        }
+                        break;
+                }
+
+                // Interpolate world position along the pit lane
+                var wp = Math.Clamp(pitProgress[i], 0f, 1f);
+                posX = pitX;
+                posZ = pitEntryZ + wp * (pitExitZ - pitEntryZ);
+
+                // Velocity: moving in +Z direction at pit speed (0 when stopped)
+                if (pitPhase[i] != 2)
+                {
+                    velX = 0f;
+                    velZ = +pitMaxSpeedMs; // moving from -Z toward +Z (top to bottom on screen)
+                }
+
+                // Freeze spline while in pits (don't advance on the main track)
+            }
+            else
+            {
+                // ── Normal track position (ellipse) ───────────────────────
+                var angle = splinePos[i] * 2f * MathF.PI;
+                var lapMs = baseLapTimes[i] + lapVariance[i];
+                var throttle = MathF.Abs(MathF.Sin(angle * 2f));
+
+                const float TopSpeedMs = 250f / 3.6f;
+                var speed = TopSpeedMs * (0.35f + 0.65f * throttle);
+
+                posX = Rx * MathF.Cos(angle);
+                posZ = Rz * MathF.Sin(angle);
+                velX = -speed * MathF.Sin(angle);
+                velZ = speed * MathF.Cos(angle);
+
+                // RPM dynamics
+                const float RpmAccel = 650f;
+                const float RpmBrake = 950f;
+                const float Redline = 7_800f;
+                const float ShiftDownRpm = 2_800f;
+                const float ShiftUpRpm = 7_500f;
+
+                var rpmDelta =
+                    throttle >= 0.45f ? RpmAccel * throttle : -RpmBrake * (1f - throttle);
+
+                rpms[i] = Math.Clamp(rpms[i] + rpmDelta, 1_200f, Redline);
+
+                if (rpms[i] >= ShiftUpRpm && gears[i] < 6)
+                {
+                    gears[i]++;
+                    rpms[i] = 4_200f;
+                }
+                else if (rpms[i] <= ShiftDownRpm && gears[i] > 1)
+                {
+                    gears[i]--;
+                    rpms[i] = 6_000f;
+                }
+            }
+
+            var gear = (byte)(pitPhase[i] > 0 ? 1 : gears[i]); // 1st gear in pits
+            var rpm = (ushort)(
+                pitPhase[i] == 2
+                    ? 800 // idle when stopped
+                    : Math.Clamp(rpms[i] + rng.Next(-150, 150), 1_000, 8_000)
+            );
 
             await Send(
                 writer
