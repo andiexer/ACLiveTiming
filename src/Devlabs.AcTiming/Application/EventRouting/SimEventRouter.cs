@@ -1,3 +1,4 @@
+using Devlabs.AcTiming.Application.EventRouting.Enricher;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,11 +10,16 @@ public sealed class SimEventRouter(
     ISimEventSource source,
     RealtimeBus realtimeBus,
     PersistenceBus persistenceBus,
-    IPitLaneProvider pitLaneProvider
+    IEnumerable<ISimEventEnricher> enrichers
 ) : BackgroundService
 {
-    private readonly SectorTimingTracker _sectorTracker = new();
-    private readonly PitStatusTracker _pitTracker = new();
+    private readonly ISimEventEnricher[] _preEnrichers = enrichers
+        .Where(e => e.Phase == EnricherPhase.Pre)
+        .ToArray();
+
+    private readonly ISimEventEnricher[] _postEnrichers = enrichers
+        .Where(e => e.Phase == EnricherPhase.Post)
+        .ToArray();
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -24,7 +30,27 @@ public sealed class SimEventRouter(
                 try
                 {
                     logger.LogDebug("Routing event: {EventType}", ev.GetType().Name);
-                    EnrichAndRoute(ev);
+
+                    // pre-enrichers
+                    foreach (var pre in _preEnrichers)
+                    {
+                        foreach (var preEvent in await pre.EnrichAsync(ev, ct))
+                        {
+                            Publish(preEvent);
+                        }
+                    }
+
+                    // main event
+                    Publish(ev);
+
+                    // post-enrichers
+                    foreach (var post in _postEnrichers)
+                    {
+                        foreach (var postEvent in await post.EnrichAsync(ev, ct))
+                        {
+                            Publish(postEvent);
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -45,72 +71,6 @@ public sealed class SimEventRouter(
             realtimeBus.Writer.TryComplete();
             persistenceBus.Writer.TryComplete();
         }
-    }
-
-    private void EnrichAndRoute(SimEvent ev)
-    {
-        // Tracker lifecycle management
-        switch (ev)
-        {
-            case SimEventSessionInfoReceived s:
-                _sectorTracker.ResetAll();
-                _pitTracker.ResetAll();
-                _pitTracker.LoadSpline(pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig));
-                break;
-            case SimEventSessionEnded:
-                _sectorTracker.ResetAll();
-                _pitTracker.ResetAll();
-                break;
-            case SimEventDriverDisconnected d:
-                _sectorTracker.ResetCar(d.CarId);
-                _pitTracker.ResetCar(d.CarId);
-                break;
-        }
-
-        // For telemetry: emit sector crossing before the original event
-        if (ev is SimEventTelemetryUpdated t)
-        {
-            var crossing = _sectorTracker.ProcessUpdate(t.CarId, t.SplinePosition);
-            if (crossing is not null)
-            {
-                Publish(
-                    new SimEventSectorCrossed(
-                        t.CarId,
-                        crossing.SectorIndex,
-                        crossing.SectorTimeMs,
-                        crossing.CompletedSectors,
-                        false
-                    )
-                );
-            }
-
-            var newPitStatus = _pitTracker.Process(t.CarId, t.WorldX, t.WorldZ);
-            if (newPitStatus is not null)
-            {
-                Publish(new SimEventPitStatusChanged(t.CarId, newPitStatus.Value));
-            }
-        }
-
-        // For lap completed: write lap event first, then S3 sector finalization
-        if (ev is SimEventLapCompleted l)
-        {
-            Publish(ev);
-            var sectors = _sectorTracker.OnLapCompleted(l.CarId, l.LapTimeMs);
-            if (sectors is not null)
-            {
-                var s3Event = new SimEventSectorCrossed(
-                    l.CarId,
-                    2,
-                    sectors[2],
-                    sectors,
-                    l.Cuts == 0
-                );
-                Publish(s3Event);
-            }
-            return;
-        }
-
-        Publish(ev);
     }
 
     private void Publish(SimEvent ev)
