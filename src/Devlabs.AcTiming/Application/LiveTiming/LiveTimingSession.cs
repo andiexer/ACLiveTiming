@@ -122,6 +122,7 @@ public sealed class LiveTimingSession
             WorldX = ev.WorldX,
             WorldZ = ev.WorldZ,
             SpeedKmh = ev.SpeedKmh,
+            MaxSpeedKmh = Math.Max(existing.MaxSpeedKmh, ev.SpeedKmh),
             Gear = ev.Gear,
             EngineRpm = ev.EngineRpm,
             IsConnected = true,
