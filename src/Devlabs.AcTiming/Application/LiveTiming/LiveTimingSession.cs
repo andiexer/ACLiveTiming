@@ -162,6 +162,7 @@ public sealed class LiveTimingSession
                 BestLapTimeMs = bestLap,
                 TotalLaps = driver.TotalLaps + 1,
                 LastLapCuts = ev.Cuts,
+                IsInOutLap = false,
             };
 
             lock (_feedLock)
@@ -236,7 +237,15 @@ public sealed class LiveTimingSession
     {
         if (_drivers.TryGetValue(ev.CarId, out var driver))
         {
-            _drivers.TryUpdate(ev.CarId, driver with { IsInPit = ev.IsInPit }, driver);
+            _drivers.TryUpdate(
+                ev.CarId,
+                driver with
+                {
+                    IsInPit = ev.IsInPit,
+                    IsInOutLap = ev.IsInPit || driver.IsInOutLap,
+                },
+                driver
+            );
             if (ev.IsInPit)
             {
                 lock (_feedLock)

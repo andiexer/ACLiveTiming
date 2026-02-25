@@ -167,10 +167,11 @@
                             <thead>
                             <tr>
                                 <th>Pos</th>
+                                <th class="car-id-th">#</th>
                                 <th>Driver</th>
                                 <th>Car</th>
-                                <th>Best Lap</th>
-                                <th title="Most recent completed lap. Red = invalid (corner cut).">Last Lap</th>
+                                <th>Best Lap Time</th>
+                                <th title="Most recent completed lap. Red = invalid (corner cut).">Lap Time</th>
                                 <th title="Delta to personal best">Δ</th>
                                 <th class="sector-th" title="Sector 1 time (last lap)">S1</th>
                                 <th class="sector-th" title="Sector 2 time (last lap)">S2</th>
@@ -197,24 +198,31 @@
                                 <tr class="driver-row @(isSelected ? "selected" : "") @(driver.IsConnected ? "" : "disconnected")"
                                     @onclick="() => SelectDriver(driver.CarId)">
                                     <td class="pos">@(i + 1)</td>
+                                    <td class="car-id-col" style="background-color: @GetDriverColor(driver.CarId)">@driver.CarId</td>
                                     <td class="driver-name">
-                                        <span class="driver-pos-bubble"
-                                              style="background-color: @GetDriverColor(driver.CarId)">@driver.CarId</span>@driver.DriverName
-                                        @if (driver.IsInPit)
-                                        {
-                                            <span class="pit-badge">PIT</span>
-                                        }
+                                        @driver.DriverName
                                     </td>
                                     <td class="car-name">
                                         <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver"/>
                                     </td>
                                     <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
-                                    <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver.LastLapCuts > 0 ? "lap-invalid" : "")">
-                                        @FormatLapTime(driver.LastLapTimeMs)
-                                        @if (driver.LastLapCuts > 0)
+                                    <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver is { LastLapCuts: > 0, IsInPit: false, IsInOutLap: false } ? "lap-invalid" : "")">
+                                        @if (driver.IsInPit)
                                         {
-                                            <span class="cuts-badge"
-                                                  title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
+                                            <span class="lap-in-pit">IN PITLANE</span>
+                                        }
+                                        else if(driver.IsInOutLap)
+                                        {
+                                            <span class="lap-in-outlap">OUT LAP</span>
+                                        }
+                                        else
+                                        {
+                                            @FormatLapTime(driver.LastLapTimeMs)
+                                            @if (driver.LastLapCuts > 0)
+                                            {
+                                                <span class="cuts-badge"
+                                                      title="@driver.LastLapCuts corner cut(s) — lap invalid">@driver.LastLapCuts</span>
+                                            }
                                         }
                                     </td>
                                     <td><DeltaBar LastMs="@(driver.LastLapTimeMs)" ReferenceMs="@(driver.BestLapTimeMs)" /></td>
@@ -261,8 +269,8 @@
                                     <div class="driver-panel-name">@sel.DriverName</div>
                                     <div class="driver-panel-meta">
                                         <span
-                                            class="driver-panel-meta-item @(sel.IsConnected ? "status-connected" : "status-disconnected")">
-                                            @(sel.IsConnected ? "On track" : "Disconnected")
+                                            class="driver-panel-meta-item @(sel.IsInPit ? "status-inpit" : "status-ontrack")">
+                                            @(sel.IsInPit ? "In Pit" : "On Track")
                                         </span>
                                     </div>
                                 </div>
@@ -314,10 +322,6 @@
                             <div class="dp-stat-row">
                                 <span class="dp-stat-label">Best this session</span>
                                 <span class="dp-stat-value">@FormatLapTime(sel.BestLapTimeMs)</span>
-                            </div>
-                            <div class="dp-stat-row">
-                                <span class="dp-stat-label">Best all-time (car)</span>
-                                <span class="dp-stat-value placeholder">—</span>
                             </div>
                             <div class="dp-stat-row">
                                 <span class="dp-stat-label">Possible best</span>
@@ -526,6 +530,7 @@
 
     private static string GetLastLapColorClass(LiveDriver driver, int? overallBest)
     {
+        if (driver.IsInPit || driver.IsInOutLap) return "";
         if (driver.LastLapTimeMs is null or 0) return "";
         if (driver.LastLapCuts > 0) return "";
         if (overallBest is not null && driver.LastLapTimeMs == overallBest) return "lap-purple";

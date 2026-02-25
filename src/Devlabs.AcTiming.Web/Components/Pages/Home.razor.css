@@ -399,21 +399,19 @@
     align-items: center;
     justify-content: center;
     width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    height: 26px;
     font-size: 0.62rem;
     font-weight: 800;
     color: #fff;
     flex-shrink: 0;
     vertical-align: middle;
     margin-right: 0.45rem;
-    border: 2px solid rgba(255, 255, 255, .55);
 }
 
 /* Larger variant for the selected driver panel header */
 .driver-pos-bubble-lg {
     width: 30px;
-    height: 30px;
+    height: 40px;
     font-size: 0.85rem;
     margin-right: 0;
     flex-shrink: 0;
@@ -428,6 +426,14 @@
     font-family: var(--font-mono);
     font-weight: 600;
     color: var(--text-primary);
+}
+
+.lap-in-pit {
+    color: var(--danger)
+}
+
+.lap-in-outlap {
+    color: var(--warning);
 }
 
 .timing-table .gap {
@@ -468,18 +474,39 @@
     opacity: 0.4;
 }
 
-.pit-badge {
-    display: inline-block;
-    margin-left: 0.4rem;
-    padding: 0.05rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.58rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #1a1a1a;
-    background: #f59e0b;
+.car-id-th{
+    width: 20px;
+    border-left: 1px solid var(--border);
+}
+
+.car-id-col {
+    padding: 0;
+    color: white;
+    width: 20px;
     vertical-align: middle;
+    border-left: 1px solid var(--border);
+}
+
+/* Pit — amber strip */
+.status-col.status-pit {
+    background: var(--warning);
+}
+
+/* Outlap — green strip (future) */
+.status-col.status-outlap {
+    background: var(--success);
+}
+
+.status-letter {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #111;
+    line-height: 1;
+    padding: 0.3rem 0;
+    text-align: center;
 }
 
 /* ── Gap / Interval toggle ──────────────────────────────────────────────── */
@@ -574,21 +601,17 @@
     text-overflow: ellipsis;
 }
 
-.driver-panel-meta {
-    margin-top: 0.18rem;
-}
-
 .driver-panel-meta-item {
     font-size: 0.68rem;
     color: var(--text-muted);
 }
 
-.status-connected {
+.status-ontrack {
     color: var(--success);
 }
 
-.status-disconnected {
-    color: var(--danger);
+.status-inpit {
+    color: var(--warning);
 }
 
 /* Brand badge — right side of the header, separated by a left border */
