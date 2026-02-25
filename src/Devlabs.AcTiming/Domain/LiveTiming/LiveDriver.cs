@@ -36,6 +36,7 @@ public sealed record LiveDriver
     public int EngineRpm { get; init; }
 
     public bool IsInPit { get; init; }
+    public bool IsInOutLap { get; set; }
 
     public IReadOnlyList<int> LastSectorTimesMs { get; init; } = [];
     public IReadOnlyList<int> BestSectorTimesMs { get; init; } = [];
