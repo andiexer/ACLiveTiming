@@ -14,7 +14,7 @@ public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatu
             case SimEventSessionInfoReceived s:
                 tracker.ResetAll();
                 tracker.LoadSpline(pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig));
-                return ValueTask.FromResult<IReadOnlyList<SimEvent>>(Array.Empty<SimEvent>());
+                return ValueTask.FromResult<IReadOnlyList<SimEvent>>([]);
 
             case SimEventSessionEnded:
                 tracker.ResetAll();

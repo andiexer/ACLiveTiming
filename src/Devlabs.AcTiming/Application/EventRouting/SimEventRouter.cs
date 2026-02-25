@@ -18,7 +18,7 @@ public sealed class SimEventRouter(
         .ToArray();
 
     private readonly ISimEventEnricher[] _postEnrichers = enrichers
-        .Where(e => e.Phase == EnricherPhase.Pre)
+        .Where(e => e.Phase == EnricherPhase.Post)
         .ToArray();
 
     protected override async Task ExecuteAsync(CancellationToken ct)

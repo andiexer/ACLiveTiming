@@ -5,43 +5,24 @@ namespace Devlabs.AcTiming.Application.EventRouting;
 
 public static class SimEventRouterServiceCollectionExtensions
 {
-    public static IServiceCollection AddSimEventRouter(
+    public static void AddSimEventRouter(
         this IServiceCollection services,
         Action<SimEventRouterBuilder> configure
     )
     {
-        services.AddOptions<SimEventRouterOptions>();
-
         var builder = new SimEventRouterBuilder(services);
         configure(builder);
 
         services.AddHostedService<SimEventRouter>();
-        return services;
     }
 }
 
 public sealed class SimEventRouterBuilder(IServiceCollection services)
 {
-    public SimEventRouterBuilder AddPreEventEnricher<T>()
-        where T : class, ISimEventEnricher => AddEnricher(EnricherPhase.Pre, typeof(T));
-
-    public SimEventRouterBuilder AddPostEventEnricher<T>()
-        where T : class, ISimEventEnricher => AddEnricher(EnricherPhase.Post, typeof(T));
-
-    private SimEventRouterBuilder AddEnricher(EnricherPhase phase, Type type)
+    public SimEventRouterBuilder AddEnricher<T>()
+        where T : class, ISimEventEnricher
     {
-        services.AddSingleton(typeof(ISimEventEnricher), type);
-        services.Configure<SimEventRouterOptions>(options =>
-        {
-            options.Enrichers.Add(new EnricherRegistration(type, phase));
-        });
+        services.AddSingleton<ISimEventEnricher, T>();
         return this;
     }
 }
-
-public sealed class SimEventRouterOptions
-{
-    public List<EnricherRegistration> Enrichers { get; } = new();
-}
-
-public sealed record EnricherRegistration(Type EnricherType, EnricherPhase Phase);

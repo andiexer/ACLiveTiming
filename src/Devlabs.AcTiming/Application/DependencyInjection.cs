@@ -44,8 +44,8 @@ public static class DependencyInjection
         services.AddSimEventRouter(config =>
         {
             // pre enrichers
-            config.AddPreEventEnricher<SectorTimingEnricher>();
-            config.AddPreEventEnricher<PitStatusEnricher>();
+            config.AddEnricher<SectorTimingEnricher>();
+            config.AddEnricher<PitStatusEnricher>();
 
             // post enrichers
         });

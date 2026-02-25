@@ -2,7 +2,7 @@ using Devlabs.AcTiming.Application.Shared;
 
 namespace Devlabs.AcTiming.Application.EventRouting.Enricher;
 
-public class SectorTimingEnricher(SectorTimingTracker tracker) : ISimEventEnricher
+public sealed class SectorTimingEnricher(SectorTimingTracker tracker) : ISimEventEnricher
 {
     public EnricherPhase Phase => EnricherPhase.Pre;
 
