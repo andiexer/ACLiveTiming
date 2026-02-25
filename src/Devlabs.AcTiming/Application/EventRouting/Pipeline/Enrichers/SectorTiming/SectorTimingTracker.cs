@@ -1,4 +1,4 @@
-namespace Devlabs.AcTiming.Application.EventRouting;
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SectorTiming;
 
 /// <summary>
 /// Tracks per-car sector progress from normalized spline position.

@@ -1,6 +1,7 @@
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
 
-namespace Devlabs.AcTiming.Application.EventRouting.Enricher;
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SectorTiming;
 
 public sealed class SectorTimingEnricher(SectorTimingTracker tracker) : ISimEventEnricher
 {

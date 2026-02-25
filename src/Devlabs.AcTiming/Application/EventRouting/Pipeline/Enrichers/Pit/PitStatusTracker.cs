@@ -1,10 +1,9 @@
-namespace Devlabs.AcTiming.Application.EventRouting;
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 
 public sealed class PitStatusTracker
 {
-    // 15 m threshold — pit boxes at Silverstone are ~8.3 m from the pit lane centerline spline,
-    // so 8 m was too tight. 15 m covers boxes while remaining safely clear of the racing track.
-    private const float ThresholdSq = 3f * 3f;
+    // 6m threshold for being considered "in the pit lane" (squared for distance comparison)
+    private const float ThresholdSq = 6f * 6f;
 
     private (float X, float Z)[]? _points;
     private readonly Dictionary<int, bool> _lastStatus = new();

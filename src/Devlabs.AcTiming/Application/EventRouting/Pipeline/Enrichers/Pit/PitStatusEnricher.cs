@@ -1,6 +1,7 @@
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
 
-namespace Devlabs.AcTiming.Application.EventRouting.Enricher;
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 
 public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatusTracker tracker)
     : ISimEventEnricher

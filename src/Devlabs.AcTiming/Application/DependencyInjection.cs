@@ -1,6 +1,8 @@
 using System.Threading.Channels;
-using Devlabs.AcTiming.Application.EventRouting;
-using Devlabs.AcTiming.Application.EventRouting.Enricher;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SectorTiming;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Sink;
 using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,13 +43,12 @@ public static class DependencyInjection
         services.AddSingleton<SectorTimingTracker>();
         services.AddSingleton<PitStatusTracker>();
 
-        services.AddSimEventRouter(config =>
+        // routing
+        services.AddSimEventPipeline(config =>
         {
-            // pre enrichers
             config.AddEnricher<SectorTimingEnricher>();
             config.AddEnricher<PitStatusEnricher>();
-
-            // post enrichers
+            config.AddSink<ChannelSink>();
         });
 
         services.AddHostedService<RealTimeProcessor>();
