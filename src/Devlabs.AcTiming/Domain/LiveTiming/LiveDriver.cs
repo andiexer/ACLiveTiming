@@ -29,6 +29,9 @@ public sealed record LiveDriver
     /// <summary>Current speed in km/h, derived from velocity vector.</summary>
     public float SpeedKmh { get; init; }
 
+    /// <summary>Maximum speed in km/h, derived from velocity vector.</summary>
+    public float MaxSpeedKmh { get; init; }
+
     /// <summary>Current gear (0 = reverse, 1 = neutral, 2+ = gears).</summary>
     public int Gear { get; init; }
 

@@ -68,6 +68,8 @@
                 ? overallBestSectors.Sum()
                 : (int?)null;
             var carsOnTrack = sorted.Count(d => d.IsConnected);
+            var carsInPit = sorted.Count(d => d.IsInPit);
+            var disconnectedCars = sorted.Count(d => !d.IsConnected);
             var totalIncidents = sorted.Sum(d => d.IncidentCount);
             var totalLaps = sorted.Sum(d => d.TotalLaps);
         }
@@ -88,7 +90,11 @@
             </div>
             <div class="sh-stat">
                 <span class="sh-stat-label">On Track</span>
-                <span class="sh-stat-value">@(sorted.Count > 0 ? $"{carsOnTrack} / {sorted.Count}" : "—")</span>
+                <span class="sh-stat-value">@(sorted.Count > 0 ? $"{carsOnTrack}" : "—")</span>
+                <span class="sh-stat-label">In Pit</span>
+                <span class="sh-stat-value">@(sorted.Count > 0 ? $"{carsInPit}" : "—")</span>
+                <span class="sh-stat-label">Exited</span>
+                <span class="sh-stat-value">@(sorted.Count > 0 ? $"{disconnectedCars}" : "—")</span>
             </div>
             <div class="sh-stat">
                 <span class="sh-stat-label">Incidents</span>
@@ -97,6 +103,19 @@
             <div class="sh-stat">
                 <span class="sh-stat-label">Laps</span>
                 <span class="sh-stat-value">@(sorted.Count > 0 ? totalLaps.ToString() : "—")</span>
+            </div>
+            <div class="sh-stat">
+                <span class="sh-stat-label">Max SPD</span>
+                <span class="sh-stat-value">
+                    @if (_leaderboard.Count > 0)
+                    {
+                        @(_leaderboard.Where(l => l.TotalLaps > 0).Select(x => x.MaxSpeedKmh).DefaultIfEmpty().Max().ToString("F0")) <span class="dp-telem-unit">km/h</span>
+                    }
+                    else
+                    {
+                        <span class="placeholder">—</span>
+                    }
+                </span>
             </div>
         </div>
     </div>
@@ -187,6 +206,7 @@
                                         </button>
                                     </div>
                                 </th>
+                                <th title="Max speed recorded in current session">Max SPD</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -237,6 +257,20 @@
                                         else
                                         {
                                             @FormatGap(driver.BestLapTimeMs, fastestLap)
+                                        }
+                                    </td>
+                                    <td>
+                                        @if(driver.TotalLaps > 0 && driver.MaxSpeedKmh > 0)
+                                        {
+                                            @($"{driver.MaxSpeedKmh:F0} ")
+                                            @if (driver.MaxSpeedKmh > 0)
+                                            {
+                                                <span class="dp-telem-unit">km/h</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="placeholder">—</span>
                                         }
                                     </td>
                                 </tr>

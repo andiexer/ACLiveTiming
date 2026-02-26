@@ -15,9 +15,6 @@
     <_ContentIncludedByDefault Remove="Components\Features\History\HistoryPage.razor" />
   </ItemGroup>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 </Project>
