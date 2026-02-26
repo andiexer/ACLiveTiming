@@ -153,13 +153,6 @@ export function init(container) {
         applyTransform();
     });
 
-    // ── Double-click: reset ──────────────────────────────────────────────────
-
-    container.addEventListener('dblclick', () => {
-        zoom = 1; vx = 0; vy = 0;
-        applyTransform();
-    });
-
     // ── Resize: invalidate cached content area ───────────────────────────────
 
     const resizeObserver = new ResizeObserver(() => {

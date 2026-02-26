@@ -1,5 +1,4 @@
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
-using Devlabs.AcTiming.Application.EventRouting.Pipeline.Sink;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.Logging;
 
@@ -23,8 +22,6 @@ public sealed class SimEventPipeline(
     {
         try
         {
-            logger.LogDebug("Routing event: {EventType}", ev.GetType().Name);
-
             // pre-enrichers
             await RunEnrichersAsync(_preEnrichers, ev, ct);
 
