@@ -8,6 +8,7 @@ namespace Devlabs.AcTiming.Domain.LiveTiming;
 [JsonDerivedType(typeof(LapCompletedFeed), "lap-completed")]
 [JsonDerivedType(typeof(CollisionFeed), "collision")]
 [JsonDerivedType(typeof(DriverInPitFeed), "driver-in-pit")]
+[JsonDerivedType(typeof(DriverHitMaxSpeedFeed), "driver-hit-max-speed")]
 public abstract record SessionFeedEvent(DateTime OccurredAtUtc);
 
 public record DriverJoinedFeed(DateTime OccurredAtUtc, int CarId, string DriverName)
@@ -35,3 +36,11 @@ public record CollisionFeed(
 
 public record DriverInPitFeed(DateTime OccurredAtUtc, int CarId, string DriverName)
     : SessionFeedEvent(OccurredAtUtc);
+
+public record DriverHitMaxSpeedFeed(
+    DateTime OccurredAtUtc,
+    int CarId,
+    string DriverName,
+    float SpeedKmh,
+    string TrapName
+) : SessionFeedEvent(OccurredAtUtc);

@@ -265,7 +265,7 @@
                                         }
                                     </td>
                                     <td>
-                                        @if(driver.TotalLaps > 0 && driver.MaxSpeedKmh > 0)
+                                        @if(driver.MaxSpeedKmh > 0)
                                         {
                                             @($"{driver.MaxSpeedKmh:F0} ")
                                             @if (driver.MaxSpeedKmh > 0)
@@ -436,6 +436,7 @@
         LapCompletedFeed => "lap",
         CollisionFeed => "collision",
         DriverInPitFeed => "pit",
+        DriverHitMaxSpeedFeed => "max-speed",
         _ => "unknown"
     };
 
@@ -455,6 +456,9 @@
 
         DriverInPitFeed pe =>
             (MarkupString)$"{DriverDotHtml(pe.CarId)} {pe.DriverName} entered the pits",
+
+        DriverHitMaxSpeedFeed ms =>
+            (MarkupString)$"{DriverDotHtml(ms.CarId)} {ms.DriverName} hit max speed of {ms.SpeedKmh:F0} km/h at {ms.TrapName} Speed Trap",
 
         _ =>
             (MarkupString)"Unknown event"

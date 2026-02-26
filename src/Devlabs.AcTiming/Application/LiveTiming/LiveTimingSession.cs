@@ -55,6 +55,9 @@ public sealed class LiveTimingSession
             case SimEventDriverDisconnected d:
                 HandleDisconnect(d);
                 break;
+            case SimEventSpeedTrapFired s:
+                HandleSpeedTrapFired(s);
+                break;
         }
     }
 
@@ -122,7 +125,6 @@ public sealed class LiveTimingSession
             WorldX = ev.WorldX,
             WorldZ = ev.WorldZ,
             SpeedKmh = ev.SpeedKmh,
-            MaxSpeedKmh = Math.Max(existing.MaxSpeedKmh, ev.SpeedKmh),
             Gear = ev.Gear,
             EngineRpm = ev.EngineRpm,
             IsConnected = true,
@@ -264,6 +266,27 @@ public sealed class LiveTimingSession
             _drivers[ev.CarId] = driver with { IsConnected = false };
             lock (_feedLock)
                 _feedEvents.Add(new DriverLeftFeed(DateTime.UtcNow, ev.CarId, driver.DriverName));
+        }
+    }
+
+    private void HandleSpeedTrapFired(SimEventSpeedTrapFired ev)
+    {
+        if (_drivers.TryGetValue(ev.CarId, out var driver))
+        {
+            if (ev.SpeedInKmh > driver.MaxSpeedKmh)
+            {
+                _drivers.TryUpdate(ev.CarId, driver with { MaxSpeedKmh = ev.SpeedInKmh }, driver);
+                lock (_feedLock)
+                    _feedEvents.Add(
+                        new DriverHitMaxSpeedFeed(
+                            DateTime.UtcNow,
+                            ev.CarId,
+                            driver.DriverName,
+                            ev.SpeedInKmh,
+                            ev.SpeedTrapName
+                        )
+                    );
+            }
         }
     }
 

@@ -21,6 +21,7 @@ else
                 <img src="maps/@_config.FullTrackName/map.png" alt="Track Map" />
             </div>
         }
+
         <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight"
              preserveAspectRatio="xMidYMid meet"
              @onclick="HandleMapClick">
@@ -42,13 +43,13 @@ else
                     var tmx  = F((tx1 + tx2) / 2);
                     var tmy  = F((ty1 + ty2) / 2 - 10);
                     <g class="poi-speed-trap-group">
-                        <line class="poi-speed-trap" x1="@tx1s" y1="@ty1s" x2="@tx2s" y2="@ty2s" />
-                        <circle class="poi-speed-trap-cap" cx="@tx1s" cy="@ty1s" r="4" />
-                        <circle class="poi-speed-trap-cap" cx="@tx2s" cy="@ty2s" r="4" />
-                        @if (!string.IsNullOrEmpty(trap.Name))
-                        {
-                            @SvgText("poi-label", tmx, tmy, trap.Name)
-                        }
+                        <line class="poi-speed-trap"
+                              x1="@tx1s" y1="@ty1s" x2="@tx2s" y2="@ty2s">
+                            @if (!string.IsNullOrEmpty(trap.Name))
+                            {
+                                <title>@trap.Name</title>
+                            }
+                        </line>
                     </g>
                 }
                 else if (overlay is PathOverlay path && path.Points.Count >= 2)
@@ -180,7 +181,7 @@ else
     /// directive when it appears inside code blocks.
     /// </summary>
     private static MarkupString SvgText(string cssClass, string x, string y, string content) =>
-        (MarkupString)$"<text class=\"{cssClass}\" x=\"{x}\" y=\"{y}\">{WebUtility.HtmlEncode(content)}</text>";
+        (MarkupString)$"<text class=\"{cssClass}\" x=\"{x}\" y=\"{y}\" fill=\"white\">{WebUtility.HtmlEncode(content)}</text>";
 
     // ── Driver colour palette (unchanged) ────────────────────────────────
 
