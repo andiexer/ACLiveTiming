@@ -15,6 +15,7 @@ internal sealed class TrackConfigRepository(AcTimingDbContext db) : ITrackConfig
     {
         return await db
             .TrackConfigs.Include(c => c.Track)
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 c => c.Track.Name == trackName && c.Track.Config == trackConfig,
                 ct
@@ -50,9 +51,20 @@ internal sealed class TrackConfigRepository(AcTimingDbContext db) : ITrackConfig
         }
 
         if (config.Id == 0)
+        {
             db.TrackConfigs.Add(config);
+        }
         else
-            db.TrackConfigs.Update(config);
+        {
+            // Load the tracked row so EF manages owned-collection ordinals itself.
+            // Calling Update() on a detached entity with shadow-keyed owned collections
+            // fails because ordinals are unknown on detached items.
+            var tracked =
+                await db.TrackConfigs.FirstOrDefaultAsync(c => c.Id == config.Id, ct)
+                ?? throw new InvalidOperationException($"TrackConfig {config.Id} not found.");
+            tracked.PitLane = config.PitLane;
+            tracked.SpeedTraps = config.SpeedTraps;
+        }
 
         await db.SaveChangesAsync(ct);
     }

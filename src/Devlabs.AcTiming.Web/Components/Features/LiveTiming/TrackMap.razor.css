@@ -105,30 +105,20 @@
 /* Speed trap — solid blue line */
 .poi-speed-trap {
     stroke: #3b82f6;
-    stroke-width: 2.5px;
+    stroke-width: 4px;
     stroke-linecap: round;
     fill: none;
-    pointer-events: none;
+
+    pointer-events: stroke; /* <-- statt none */
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+    transition: stroke 0.15s ease, stroke-width 0.15s ease, filter 0.15s ease;
 }
 
-/* Speed trap end-cap dots */
-.poi-speed-trap-cap {
-    fill: #3b82f6;
-    pointer-events: none;
-}
-
-/* POI label text (speed trap name) */
-.poi-label {
-    fill: #93c5fd;
-    font-size: 11px;
-    font-family: var(--font-mono, monospace);
-    font-weight: 700;
-    text-anchor: middle;
-    pointer-events: none;
-    paint-order: stroke;
-    stroke: #0f172a;
-    stroke-width: 3px;
-    stroke-linejoin: round;
+.poi-speed-trap:hover {
+    stroke: #60a5fa;
+    stroke-width: 6px;
+    filter: drop-shadow(0 0 6px rgba(0,0,0,0.5));
+    cursor: pointer;
 }
 
 /* Recorded / in-progress path polyline */

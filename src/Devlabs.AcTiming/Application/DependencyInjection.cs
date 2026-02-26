@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SectorTiming;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SpeedTrap;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Sink;
 using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
@@ -42,12 +43,15 @@ public static class DependencyInjection
         services.AddSingleton<ILiveTimingService, LiveTimingService>();
         services.AddSingleton<SectorTimingTracker>();
         services.AddSingleton<PitStatusTracker>();
+        services.AddSingleton<SpeedTrapTracker>();
 
         // routing
         services.AddSimEventPipeline(config =>
         {
             config.AddEnricher<SectorTimingEnricher>();
             config.AddEnricher<PitStatusEnricher>();
+            config.AddEnricher<SpeedTrapEnricher>();
+
             config.AddSink<ChannelSink>();
         });
 

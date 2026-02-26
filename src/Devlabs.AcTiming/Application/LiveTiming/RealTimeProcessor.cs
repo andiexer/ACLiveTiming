@@ -72,6 +72,9 @@ public sealed class RealTimeProcessor(
                         );
                         liveTimingService.ApplyEvent(p);
                         break;
+                    case SimEventSpeedTrapFired s:
+                        liveTimingService.ApplyEvent(s);
+                        break;
 
                     default:
                         liveTimingService.ApplyEvent(ev);
