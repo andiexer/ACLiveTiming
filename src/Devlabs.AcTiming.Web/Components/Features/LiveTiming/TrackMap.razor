@@ -58,6 +58,17 @@ else
                     <polyline class="poi-path" points="@pts"
                               style="stroke:@path.Color;opacity:@path.Opacity.ToString("F2", CultureInfo.InvariantCulture)" />
                 }
+                else if (overlay is PointMarkerOverlay marker)
+                {
+                    var (mx, my) = WorldToSvg(marker.Position.X, marker.Position.Z);
+                    <g>
+                        <circle cx="@F(mx)" cy="@F(my)" r="8"
+                                fill="@marker.Color" fill-opacity="0.2"
+                                stroke="@marker.Color" stroke-width="1.5" />
+                        <circle cx="@F(mx)" cy="@F(my)" r="3.5"
+                                fill="@marker.Color" stroke="#0F1221" stroke-width="1.5" />
+                    </g>
+                }
             }
 
             <!-- ── Driver pins ────────────────────────────────────────── -->

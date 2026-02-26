@@ -29,4 +29,6 @@ public class LiveTimingService : ILiveTimingService
     public IReadOnlyList<LiveDriver> GetLeaderboard() => _session?.GetLeaderboard() ?? [];
 
     public IReadOnlyList<SessionFeedEvent> GetFeedEvents() => _session?.GetFeedEvents() ?? [];
+
+    public IReadOnlyList<BestLapTelemetry> GetBestLaps() => _session?.GetBestLaps() ?? [];
 }

@@ -13,4 +13,5 @@ public interface ILiveTimingService
     LiveDriver? GetDriver(int carId);
     IReadOnlyList<LiveDriver> GetLeaderboard();
     IReadOnlyList<SessionFeedEvent> GetFeedEvents();
+    IReadOnlyList<BestLapTelemetry> GetBestLaps();
 }

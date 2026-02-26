@@ -6,9 +6,22 @@ namespace Devlabs.AcTiming.Application.LiveTiming;
 
 public sealed class LiveTimingSession
 {
+    private const int MaxSamplesPerLap = 2000;
+    private const float MinSplineStep = 0.002f;
+    private const int MinSamplesForValidLap = 20;
+
     private readonly ConcurrentDictionary<int, LiveDriver> _drivers = new();
     private readonly Lock _feedLock = new();
     private readonly List<SessionFeedEvent> _feedEvents = [];
+
+    // Keyed by CarId — only written from the sequential event pipeline.
+    private readonly Dictionary<int, List<LapTelemetrySample>> _currentLapBuffers = new();
+
+    // Keyed by (DriverGuid, CarModel) — read from Blazor UI threads, so concurrent.
+    private readonly ConcurrentDictionary<
+        (string DriverGuid, string CarModel),
+        BestLapTelemetry
+    > _bestLaps = new();
 
     public SessionInfo Info { get; }
 
@@ -72,6 +85,8 @@ public sealed class LiveTimingSession
             return [.. _feedEvents];
     }
 
+    public IReadOnlyList<BestLapTelemetry> GetBestLaps() => [.. _bestLaps.Values];
+
     private void HandleDriverConnected(SimEventDriverConnected ev)
     {
         var driver = new LiveDriver
@@ -84,6 +99,7 @@ public sealed class LiveTimingSession
             IsConnected = true,
         };
         _drivers[ev.CarId] = driver;
+        _currentLapBuffers[ev.CarId] = [];
         lock (_feedLock)
             _feedEvents.Add(new DriverJoinedFeed(DateTime.UtcNow, ev.CarId, ev.DriverName));
     }
@@ -130,6 +146,31 @@ public sealed class LiveTimingSession
             IsConnected = true,
         };
         _drivers.TryUpdate(ev.CarId, updated, existing);
+
+        AppendTelemetrySample(ev);
+    }
+
+    private void AppendTelemetrySample(SimEventTelemetryUpdated ev)
+    {
+        if (!_currentLapBuffers.TryGetValue(ev.CarId, out var buffer))
+        {
+            buffer = [];
+            _currentLapBuffers[ev.CarId] = buffer;
+        }
+
+        if (buffer.Count >= MaxSamplesPerLap)
+            return;
+
+        // Skip if spline position hasn't advanced enough (also handles AFK: stationary car adds 1 sample then stops).
+        if (
+            buffer.Count > 0
+            && Math.Abs(ev.SplinePosition - buffer[^1].SplinePosition) < MinSplineStep
+        )
+            return;
+
+        buffer.Add(
+            new LapTelemetrySample(ev.SplinePosition, ev.WorldX, ev.WorldZ, ev.SpeedKmh, ev.Gear)
+        );
     }
 
     private void HandleSectorCrossed(SimEventSectorCrossed ev)
@@ -153,11 +194,29 @@ public sealed class LiveTimingSession
     {
         if (_drivers.TryGetValue(ev.CarId, out var driver))
         {
-            var bestLap =
+            var isNewBest =
                 ev.Cuts == 0
-                && (driver.BestLapTimeMs is null || ev.LapTimeMs < driver.BestLapTimeMs)
-                    ? ev.LapTimeMs
-                    : driver.BestLapTimeMs;
+                && (driver.BestLapTimeMs is null || ev.LapTimeMs < driver.BestLapTimeMs);
+
+            var bestLap = isNewBest ? ev.LapTimeMs : driver.BestLapTimeMs;
+
+            if (
+                isNewBest
+                && _currentLapBuffers.TryGetValue(ev.CarId, out var buffer)
+                && buffer.Count >= MinSamplesForValidLap
+            )
+            {
+                var key = (driver.DriverGuid, driver.CarModel);
+                _bestLaps[key] = new BestLapTelemetry(
+                    driver.DriverGuid,
+                    driver.DriverName,
+                    driver.CarModel,
+                    ev.LapTimeMs,
+                    buffer.ToList()
+                );
+            }
+
+            _currentLapBuffers[ev.CarId] = [];
 
             _drivers[ev.CarId] = driver with
             {

@@ -17,10 +17,16 @@ public sealed record SpeedTrapOverlay(string Name, WorldPoint Point1, WorldPoint
 
 /// <summary>
 /// Renders a recorded or in-progress polyline path.
-/// Used both for driver path recording in the configurator and future lap comparison.
+/// Used both for driver path recording in the configurator and lap comparison.
 /// </summary>
 public sealed record PathOverlay(
     IReadOnlyList<WorldPoint> Points,
     string Color = "#4ecca3",
     float Opacity = 0.75f
 ) : PoiOverlay;
+
+/// <summary>
+/// Renders a single circular marker at a world-space position.
+/// Used by the lap comparison page to highlight the chart hover position on the map.
+/// </summary>
+public sealed record PointMarkerOverlay(WorldPoint Position, string Color = "#ffffff") : PoiOverlay;

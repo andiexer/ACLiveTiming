@@ -1,0 +1,153 @@
+/* ── Page frame ──────────────────────────────────────────────────────────── */
+.lc-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.lc-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 1rem;
+    height: 42px;
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+}
+
+.lc-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    padding-right: 0.5rem;
+    border-right: 1px solid var(--border);
+    margin-right: 0.2rem;
+}
+
+.lc-selector-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.lc-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.lc-swatch-a { background: #4ecca3; }
+.lc-swatch-b { background: #e94560; }
+
+.lc-select {
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-family: var(--font-sans);
+    padding: 0.2rem 0.45rem;
+    border-radius: 3px;
+    min-width: 220px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.lc-select:focus { border-color: var(--accent); }
+
+.lc-btn {
+    padding: 0.28rem 0.7rem;
+    border-radius: 3px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.lc-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.lc-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────────── */
+.lc-map-area {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--border);
+}
+
+/* ── Charts panel ────────────────────────────────────────────────────────── */
+.lc-charts {
+    width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--bg-surface);
+}
+
+.lc-chart-card {
+    padding: 0.75rem 0.75rem 0.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.lc-chart-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.lc-chart-unit {
+    font-weight: 400;
+    text-transform: none;
+    margin-left: 0.25rem;
+}
+
+.lc-charts-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding: 2rem;
+    text-align: center;
+}
+
+/* ── Suppress ApexCharts marker dots (static + hover) ───────────────────── */
+:deep(.apexcharts-series-markers circle) {
+    display: none !important;
+}
+
+/* ── Full-page empty state ───────────────────────────────────────────────── */
+.lc-empty-page {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
