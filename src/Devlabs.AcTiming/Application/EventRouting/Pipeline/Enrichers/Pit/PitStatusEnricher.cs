@@ -1,10 +1,15 @@
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 
-public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatusTracker tracker)
-    : ISimEventEnricher
+public sealed class PitStatusEnricher(
+    IServiceScopeFactory scopeFactory,
+    PitStatusTracker tracker,
+    ILogger<PitStatusEnricher> logger
+) : ISimEventEnricher
 {
     public EnricherPhase Phase => EnricherPhase.Pre;
 
@@ -13,9 +18,7 @@ public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatu
         switch (ev)
         {
             case SimEventSessionInfoReceived s:
-                tracker.ResetAll();
-                tracker.LoadSpline(pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig));
-                return ValueTask.FromResult<IReadOnlyList<SimEvent>>([]);
+                return LoadPitDataAndResetAsync(s, ct);
 
             case SimEventSessionEnded:
                 tracker.ResetAll();
@@ -39,5 +42,52 @@ public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatu
             default:
                 return ValueTask.FromResult<IReadOnlyList<SimEvent>>([]);
         }
+    }
+
+    private async ValueTask<IReadOnlyList<SimEvent>> LoadPitDataAndResetAsync(
+        SimEventSessionInfoReceived s,
+        CancellationToken ct
+    )
+    {
+        tracker.ResetAll();
+
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ITrackConfigRepository>();
+            var config = await repo.FindByTrackAsync(s.TrackName, s.TrackConfig, ct);
+
+            if (config?.PitLane is { } pitLane)
+            {
+                var polygon = pitLane.ToPolygon();
+                if (polygon.Count >= 3)
+                {
+                    tracker.LoadPolygon(polygon);
+                    logger.LogInformation(
+                        "Pit detection: using DB polygon ({Count} vertices) for {Track}",
+                        polygon.Count,
+                        s.TrackName
+                    );
+                    return [];
+                }
+            }
+            else
+            {
+                logger.LogInformation(
+                    "No pit lane definition found in DB for {Track}. no pit lane detection will be available.",
+                    s.TrackName
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to load TrackConfig from DB for {Track}. no pit lane detection will be available.",
+                s.TrackName
+            );
+        }
+
+        return [];
     }
 }

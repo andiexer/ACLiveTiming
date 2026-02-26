@@ -8,4 +8,6 @@ public class Track
 
     public ICollection<Session> Sessions { get; set; } = [];
     public ICollection<Lap> Laps { get; set; } = [];
+
+    public TrackConfig? TrackConfig { get; set; }
 }

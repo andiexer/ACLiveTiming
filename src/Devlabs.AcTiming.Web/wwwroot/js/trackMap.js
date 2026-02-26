@@ -31,6 +31,9 @@ export function init(container) {
     let vxStart = 0, vyStart = 0;
     let ctmScaleAtStart = 1;
     let cachedContentArea = null;
+    // Tracks whether the last pointer interaction was a real drag (> 5px movement).
+    // Read by getSvgPoint to suppress accidental POI placement after panning.
+    let lastPointerWasDrag = false;
 
     // ── Content area (the letterboxed region where the map image is drawn) ──
 
@@ -118,6 +121,7 @@ export function init(container) {
     // ── Drag: pan ────────────────────────────────────────────────────────────
 
     container.addEventListener('pointerdown', e => {
+        lastPointerWasDrag = false;
         if (zoom <= 1 || e.button !== 0) return;
         dragging   = true;
         dragStartX = e.clientX;
@@ -132,6 +136,12 @@ export function init(container) {
 
     container.addEventListener('pointermove', e => {
         if (!dragging) return;
+        // Mark as drag once the pointer moves more than 5 CSS pixels
+        if (!lastPointerWasDrag) {
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+            if (dx * dx + dy * dy > 25) lastPointerWasDrag = true;
+        }
         const svgUnitsPerPx = 1 / ctmScaleAtStart;
         vx = vxStart - (e.clientX - dragStartX) * svgUnitsPerPx;
         vy = vyStart - (e.clientY - dragStartY) * svgUnitsPerPx;
@@ -140,13 +150,6 @@ export function init(container) {
 
     container.addEventListener('pointerup', () => {
         dragging = false;
-        applyTransform();
-    });
-
-    // ── Double-click: reset ──────────────────────────────────────────────────
-
-    container.addEventListener('dblclick', () => {
-        zoom = 1; vx = 0; vy = 0;
         applyTransform();
     });
 
@@ -161,7 +164,10 @@ export function init(container) {
     // Initial placement of img wrapper
     applyTransform();
 
-    instances.set(container, { resizeObserver });
+    instances.set(container, {
+        resizeObserver,
+        getLastPointerWasDrag: () => lastPointerWasDrag,
+    });
 }
 
 export function dispose(container) {
@@ -170,4 +176,26 @@ export function dispose(container) {
         inst.resizeObserver.disconnect();
         instances.delete(container);
     }
+}
+
+/**
+ * Converts viewport client coordinates to SVG viewBox coordinates.
+ * Returns null when the click followed a pan gesture (drag guard).
+ * The returned point can be used directly with the world-coordinate formula:
+ *   worldX = svgX * scaleFactor - xOffset
+ *   worldZ = svgY * scaleFactor - zOffset
+ */
+export function getSvgPoint(container, clientX, clientY) {
+    const inst = instances.get(container);
+    // Suppress placement if the user was panning
+    if (inst?.getLastPointerWasDrag()) return null;
+
+    const svg = container.querySelector('svg');
+    if (!svg) return null;
+
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return { x: svgPt.x, y: svgPt.y };
 }

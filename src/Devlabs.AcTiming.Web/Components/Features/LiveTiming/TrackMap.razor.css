@@ -85,3 +85,57 @@
     fill: #fff;
     font-weight: 700;
 }
+
+/* ── Edit mode ──────────────────────────────────────────────────────────── */
+.track-map.edit-mode svg {
+    cursor: crosshair;
+}
+
+/* ── POI overlays ───────────────────────────────────────────────────────── */
+
+/* Pit lane corridor — amber fill + dashed border */
+.poi-pit-lane {
+    fill: rgba(245, 158, 11, 0.15);
+    stroke: #f59e0b;
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 4;
+    pointer-events: none;
+}
+
+/* Speed trap — solid blue line */
+.poi-speed-trap {
+    stroke: #3b82f6;
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    fill: none;
+    pointer-events: none;
+}
+
+/* Speed trap end-cap dots */
+.poi-speed-trap-cap {
+    fill: #3b82f6;
+    pointer-events: none;
+}
+
+/* POI label text (speed trap name) */
+.poi-label {
+    fill: #93c5fd;
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: #0f172a;
+    stroke-width: 3px;
+    stroke-linejoin: round;
+}
+
+/* Recorded / in-progress path polyline */
+.poi-path {
+    fill: none;
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}

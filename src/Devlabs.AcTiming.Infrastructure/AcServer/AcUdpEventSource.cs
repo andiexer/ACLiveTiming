@@ -202,7 +202,7 @@ public sealed class AcUdpEventSource(
         var session = new SimEventSessionInfoReceived(
             info.ServerName,
             TrackNameSanitizer.Sanitize(info.Track),
-            info.TrackConfig,
+            info.TrackConfig == string.Empty ? null : info.TrackConfig,
             (SessionType)info.Type,
             info.Time,
             info.Laps,

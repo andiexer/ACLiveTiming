@@ -5,7 +5,7 @@ namespace Devlabs.AcTiming.Application.Shared;
 public record SimEventSessionInfoReceived(
     string ServerName,
     string TrackName,
-    string TrackConfig,
+    string? TrackConfig,
     SessionType Type,
     int Time,
     int Laps,
