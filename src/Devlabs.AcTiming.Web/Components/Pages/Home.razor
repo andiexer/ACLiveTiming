@@ -1,10 +1,13 @@
 @page "/"
 @using Devlabs.AcTiming.Application.Cars
+@using Devlabs.AcTiming.Application.Shared
 @using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Domain.Shared
 @using Devlabs.AcTiming.Web.LiveTiming
 @using Microsoft.AspNetCore.SignalR.Client
 @implements IAsyncDisposable
 @inject ICarBrandResolver CarBrandResolver
+@inject ITrackConfigRepository ConfigRepo
 
 <PageTitle>Live Timing - AC Timing</PageTitle>
 
@@ -135,8 +138,10 @@
                 <div class="map-body">
                     @if (sorted.Count > 0)
                     {
-                        <TrackMap Drivers="sorted" TrackName="@(_session?.TrackName)"
-                                  TrackConfig="@(_session?.TrackConfig)" SelectedCarId="_selectedCarId"/>
+                        <TrackMap @key="@SessionTrackKey(_session)"
+                                  Drivers="sorted" TrackName="@(_session?.TrackName)"
+                                  TrackConfig="@(_session?.TrackConfig)" SelectedCarId="_selectedCarId"
+                                  PoiOverlays="@_poiOverlays" />
                     }
                     else
                     {
@@ -385,8 +390,9 @@
         <div class="map-fullscreen-overlay" @onclick="() => _mapFullscreen = false">
             <div class="map-fullscreen-inner" @onclick:stopPropagation>
                 <button class="map-fullscreen-close" @onclick="() => _mapFullscreen = false" title="Close">✕</button>
-                <TrackMap Drivers="sorted" TrackName="@(_session?.TrackName)" TrackConfig="@(_session?.TrackConfig)"
-                          SelectedCarId="_selectedCarId"/>
+                <TrackMap @key="@SessionTrackKey(_session)"
+                          Drivers="sorted" TrackName="@(_session?.TrackName)" TrackConfig="@(_session?.TrackConfig)"
+                          SelectedCarId="_selectedCarId" PoiOverlays="@_poiOverlays" />
             </div>
         </div>
     }
@@ -403,6 +409,10 @@
     private PeriodicTimer? _tickTimer;
     private CancellationTokenSource? _tickCts;
     private bool _showInterval;
+
+    // ── POI overlays (loaded from DB when track changes) ──────────────────
+    private IReadOnlyList<PoiOverlay> _poiOverlays = [];
+    private string? _loadedTrackKey;
 
     // ── Map fullscreen ─────────────────────────────────────────────────────
     private bool _mapFullscreen;
@@ -460,7 +470,7 @@
 
         _hubConnection.On<LiveTimingSnapshot>(LiveTimingHubMethods.StateSnapshot, snapshot =>
         {
-            InvokeAsync(() =>
+            InvokeAsync(async () =>
             {
                 _session = snapshot.Session;
                 _sessionStartedAt = _session is not null
@@ -468,6 +478,15 @@
                     : null;
                 _leaderboard = snapshot.Leaderboard.ToList();
                 _feedEvents = snapshot.FeedEvents.ToList();
+
+                // Reload POI overlays whenever the track changes
+                var newKey = SessionTrackKey(_session);
+                if (newKey != _loadedTrackKey)
+                {
+                    _loadedTrackKey = newKey;
+                    await LoadPoiOverlaysAsync();
+                }
+
                 StateHasChanged();
             });
         });
@@ -494,6 +513,42 @@
     }
 
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    // ── POI overlay loading ────────────────────────────────────────────────
+
+    private static string? SessionTrackKey(SessionInfo? s) =>
+        s is null ? null
+        : string.IsNullOrEmpty(s.TrackConfig) ? s.TrackName
+        : $"{s.TrackName}/{s.TrackConfig}";
+
+    private async Task LoadPoiOverlaysAsync()
+    {
+        if (_session is null) { _poiOverlays = []; return; }
+
+        try
+        {
+            var config = await ConfigRepo.FindByTrackAsync(_session.TrackName, _session.TrackConfig);
+            if (config is null) { _poiOverlays = []; return; }
+
+            var overlays = new List<PoiOverlay>();
+
+            if (config.PitLane is { } pitLane && pitLane.CenterLine.Count >= 2)
+            {
+                var polygon = pitLane.ToPolygon();
+                if (polygon.Count >= 3)
+                    overlays.Add(new PitLaneOverlay(polygon));
+            }
+
+            foreach (var trap in config.SpeedTraps)
+                overlays.Add(new SpeedTrapOverlay(trap.Name, trap.Point1, trap.Point2));
+
+            _poiOverlays = overlays;
+        }
+        catch
+        {
+            _poiOverlays = [];
+        }
+    }
 
     // ── Formatting helpers ─────────────────────────────────────────────────
     private MarkupString FormatIncidentMarkup(CollisionFeed evt)

@@ -4,6 +4,7 @@ using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Web.Components;
 using Devlabs.AcTiming.Web.LiveTiming;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,11 +33,11 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.MapHub<LiveTimingHub>(LiveTimingHub.HubUrl);
 
-// Ensure DB exists on every startup
+// Apply any pending migrations on startup (creates DB on first run)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AcTimingDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 // Generate pit_lane.ai for the simulator track if missing

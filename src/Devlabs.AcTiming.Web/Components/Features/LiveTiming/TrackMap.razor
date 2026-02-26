@@ -1,4 +1,7 @@
+@using System.Globalization
+@using System.Net
 @using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Domain.Shared
 @using Devlabs.AcTiming.Web.LiveTiming
 @namespace Devlabs.AcTiming.Web.Components.Features.LiveTiming
 @inject TrackMapService MapService
@@ -11,7 +14,7 @@
 }
 else
 {
-    <div class="track-map" @ref="_mapRef">
+    <div class="track-map @(EditMode ? "edit-mode" : "")" @ref="_mapRef">
         @if (_config.HasImage)
         {
             <div class="track-map-img-wrap">
@@ -19,7 +22,44 @@ else
             </div>
         }
         <svg viewBox="0 0 @_config.PixelWidth @_config.PixelHeight"
-             preserveAspectRatio="xMidYMid meet">
+             preserveAspectRatio="xMidYMid meet"
+             @onclick="HandleMapClick">
+
+            <!-- ── POI overlays (rendered below driver pins) ───────────── -->
+            @foreach (var overlay in PoiOverlays)
+            {
+                @if (overlay is PitLaneOverlay pitLane && pitLane.Polygon.Count >= 3)
+                {
+                    var pts = ToSvgPoints(pitLane.Polygon);
+                    <polygon class="poi-pit-lane" points="@pts" />
+                }
+                else if (overlay is SpeedTrapOverlay trap)
+                {
+                    var (tx1, ty1) = WorldToSvg(trap.Point1.X, trap.Point1.Z);
+                    var (tx2, ty2) = WorldToSvg(trap.Point2.X, trap.Point2.Z);
+                    var tx1s = F(tx1); var ty1s = F(ty1);
+                    var tx2s = F(tx2); var ty2s = F(ty2);
+                    var tmx  = F((tx1 + tx2) / 2);
+                    var tmy  = F((ty1 + ty2) / 2 - 10);
+                    <g class="poi-speed-trap-group">
+                        <line class="poi-speed-trap" x1="@tx1s" y1="@ty1s" x2="@tx2s" y2="@ty2s" />
+                        <circle class="poi-speed-trap-cap" cx="@tx1s" cy="@ty1s" r="4" />
+                        <circle class="poi-speed-trap-cap" cx="@tx2s" cy="@ty2s" r="4" />
+                        @if (!string.IsNullOrEmpty(trap.Name))
+                        {
+                            @SvgText("poi-label", tmx, tmy, trap.Name)
+                        }
+                    </g>
+                }
+                else if (overlay is PathOverlay path && path.Points.Count >= 2)
+                {
+                    var pts = ToSvgPoints(path.Points);
+                    <polyline class="poi-path" points="@pts"
+                              style="stroke:@path.Color;opacity:@path.Opacity.ToString("F2", CultureInfo.InvariantCulture)" />
+                }
+            }
+
+            <!-- ── Driver pins ────────────────────────────────────────── -->
             @{
                 var nonSelected = Drivers.Where(d => d.CarId != SelectedCarId).ToList();
                 var selectedDriver = SelectedCarId is not null ? Drivers.FirstOrDefault(d => d.CarId == SelectedCarId) : null;
@@ -55,11 +95,23 @@ else
 }
 
 @code {
+    // ── Existing parameters ───────────────────────────────────────────────
     [Parameter] public IReadOnlyList<LiveDriver> Drivers { get; set; } = [];
     [Parameter] public string? TrackName { get; set; }
     [Parameter] public string? TrackConfig { get; set; }
     [Parameter] public int? SelectedCarId { get; set; }
 
+    // ── POI / edit parameters ─────────────────────────────────────────────
+    /// <summary>Overlays rendered in the SVG below driver pins (pit lane, speed traps, paths).</summary>
+    [Parameter] public IReadOnlyList<PoiOverlay> PoiOverlays { get; set; } = [];
+
+    /// <summary>When true the cursor becomes a crosshair and map clicks fire <see cref="OnMapClick"/>.</summary>
+    [Parameter] public bool EditMode { get; set; }
+
+    /// <summary>Fires with the world-space coordinate of each map click in edit mode.</summary>
+    [Parameter] public EventCallback<WorldPoint> OnMapClick { get; set; }
+
+    // ── Internal state ────────────────────────────────────────────────────
     private TrackMapConfig? _config;
     private ElementReference _mapRef;
     private IJSObjectReference? _mapJs;
@@ -86,6 +138,51 @@ else
             await _mapJs.DisposeAsync();
         }
     }
+
+    // ── Edit-mode click handling ──────────────────────────────────────────
+
+    private async Task HandleMapClick(MouseEventArgs e)
+    {
+        if (!EditMode || !OnMapClick.HasDelegate || _mapJs is null || _config is null)
+            return;
+
+        // getSvgPoint returns null when the click followed a pan gesture
+        var pt = await _mapJs.InvokeAsync<SvgPoint?>("getSvgPoint", _mapRef, e.ClientX, e.ClientY);
+        if (pt is null) return;
+
+        var worldX = (float)(pt.X * _config.ScaleFactor - _config.XOffset);
+        var worldZ = (float)(pt.Y * _config.ScaleFactor - _config.ZOffset);
+
+        await OnMapClick.InvokeAsync(new WorldPoint(worldX, worldZ));
+    }
+
+    private sealed record SvgPoint(double X, double Y);
+
+    // ── Coordinate helpers ────────────────────────────────────────────────
+
+    private (double X, double Y) WorldToSvg(float worldX, float worldZ) =>
+        ((worldX + _config!.XOffset) / _config.ScaleFactor,
+         (worldZ + _config!.ZOffset) / _config.ScaleFactor);
+
+    /// <summary>Converts a list of world points to an SVG points string ("x1,y1 x2,y2 …").</summary>
+    private string ToSvgPoints(IReadOnlyList<WorldPoint> pts) =>
+        string.Join(" ", pts.Select(p =>
+        {
+            var (x, y) = WorldToSvg(p.X, p.Z);
+            return string.Create(CultureInfo.InvariantCulture, $"{x:F1},{y:F1}");
+        }));
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Renders an SVG text element as MarkupString.
+    /// Required because Blazor's Razor parser treats &lt;text&gt; as a special
+    /// directive when it appears inside code blocks.
+    /// </summary>
+    private static MarkupString SvgText(string cssClass, string x, string y, string content) =>
+        (MarkupString)$"<text class=\"{cssClass}\" x=\"{x}\" y=\"{y}\">{WebUtility.HtmlEncode(content)}</text>";
+
+    // ── Driver colour palette (unchanged) ────────────────────────────────
 
     private static readonly string[] Colors =
     [

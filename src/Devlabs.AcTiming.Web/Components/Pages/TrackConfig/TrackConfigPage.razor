@@ -1,0 +1,532 @@
+@page "/track-config"
+@using Devlabs.AcTiming.Application.Shared
+@using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Domain.Shared
+@using Devlabs.AcTiming.Web.LiveTiming
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+@inject ITrackConfigRepository ConfigRepo
+@inject TrackMapService MapService
+@inject IWebHostEnvironment Env
+@inject NavigationManager Nav
+
+<PageTitle>Track Config – AC Timing</PageTitle>
+
+<div class="tc-page">
+
+    <!-- ── Header ───────────────────────────────────────────────────────────── -->
+    <div class="tc-header">
+        <span class="tc-title">Track Config</span>
+        <select class="tc-select" @bind="_selectedTrackKey">
+            <option value="">— select track —</option>
+            @foreach (var t in _tracks)
+            {
+                <option value="@TrackKey(t)">@t.DisplayName</option>
+            }
+        </select>
+        <button class="tc-btn tc-btn-secondary" @onclick="LoadConfigAsync"
+                disabled="@(string.IsNullOrEmpty(_selectedTrackKey))">Load</button>
+        @if (!string.IsNullOrEmpty(_statusMsg))
+        {
+            <span class="tc-status @(_statusError ? "tc-status-error" : "tc-status-ok")">@_statusMsg</span>
+        }
+        <div class="tc-spacer"></div>
+        <button class="tc-btn tc-btn-primary" @onclick="SaveConfigAsync"
+                disabled="@(string.IsNullOrEmpty(_selectedTrackKey) || _isSaving)">
+            @(_isSaving ? "Saving…" : "Save")
+        </button>
+    </div>
+
+    <!-- ── Body ─────────────────────────────────────────────────────────────── -->
+    <div class="tc-body">
+
+        <!-- Sidebar -->
+        <aside class="tc-sidebar">
+
+            <!-- Tool tabs -->
+            <div class="tc-tool-tabs">
+                <button class="tc-tool-tab @(_activeTool == Tool.PitLane ? "active" : "")"
+                        @onclick="SwitchToPitLane">Pit Lane</button>
+                <button class="tc-tool-tab @(_activeTool == Tool.SpeedTrap ? "active" : "")"
+                        @onclick="SwitchToSpeedTrap">Speed Trap</button>
+                <button class="tc-tool-tab @(_activeTool == Tool.RecordPath ? "active" : "")"
+                        @onclick="SwitchToRecordPath">Record Path</button>
+            </div>
+
+            <!-- ── Pit Lane panel ──────────────────────────────────────── -->
+            @if (_activeTool == Tool.PitLane)
+            {
+                <div class="tc-panel-body">
+                    <p class="tc-hint">
+                        @if (_pitCenterLine.Count == 0)
+                        {
+                            @("Click the map to place the first center-line point.")
+                        }
+                        else
+                        {
+                            @($"{_pitCenterLine.Count} point{(_pitCenterLine.Count != 1 ? "s" : "")} — keep clicking to extend.")
+                        }
+                    </p>
+
+                    <div class="tc-stat-row">
+                        <span class="tc-stat-label">Center-line points</span>
+                        <span class="tc-stat-badge">@_pitCenterLine.Count</span>
+                    </div>
+
+                    <div class="tc-field">
+                        <div class="tc-field-header">
+                            <label class="tc-label">Half-width</label>
+                            <span class="tc-field-value">@_pitHalfWidth.ToString("F0") m</span>
+                        </div>
+                        <input type="range" class="tc-range" min="4" max="20" step="1"
+                               value="@((int)_pitHalfWidth)"
+                               @oninput="OnHalfWidthInput" />
+                    </div>
+
+                    <label class="tc-checkbox-row">
+                        <input type="checkbox" @bind="_showPitPolygon" />
+                        <span>Show polygon preview</span>
+                    </label>
+
+                    <div class="tc-actions">
+                        <button class="tc-btn tc-btn-ghost" @onclick="UndoLastPitPoint"
+                                disabled="@(_pitCenterLine.Count == 0)">Undo</button>
+                        <button class="tc-btn tc-btn-ghost tc-btn-danger" @onclick="ClearPitLane"
+                                disabled="@(_pitCenterLine.Count == 0)">Clear</button>
+                    </div>
+                </div>
+            }
+
+            <!-- ── Speed Trap panel ───────────────────────────────────── -->
+            @if (_activeTool == Tool.SpeedTrap)
+            {
+                <div class="tc-panel-body">
+                    <p class="tc-hint @(_trapP1 is not null ? "tc-hint-accent" : "")">@SpeedTrapHint</p>
+
+                    @if (_trapP1 is null)
+                    {
+                        <div class="tc-field">
+                            <label class="tc-label">Name (optional)</label>
+                            <input class="tc-input" @bind="_trapName"
+                                   placeholder="e.g. Main Straight" />
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="tc-btn tc-btn-ghost" @onclick="CancelTrap">Cancel placement</button>
+                    }
+
+                    <div class="tc-section-label">Defined traps</div>
+                    @if (_speedTraps.Count > 0)
+                    {
+                        <div class="tc-list">
+                            @foreach (var trap in _speedTraps)
+                            {
+                                <div class="tc-list-item">
+                                    <span class="tc-list-name">@(string.IsNullOrEmpty(trap.Name) ? "(unnamed)" : trap.Name)</span>
+                                    <button class="tc-list-del" @onclick="() => DeleteTrap(trap.Id)" title="Delete">✕</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="tc-empty">No speed traps yet.</span>
+                    }
+                </div>
+            }
+
+            <!-- ── Record Path panel ──────────────────────────────────── -->
+            @if (_activeTool == Tool.RecordPath)
+            {
+                <div class="tc-panel-body">
+                    <p class="tc-hint">Record a driver's path to use as the pit lane center-line reference.</p>
+
+                    <div class="tc-field">
+                        <label class="tc-label">Car to record</label>
+                        @if (_liveDrivers.Count > 0)
+                        {
+                            <select class="tc-select" @bind="_recordingCarIdStr">
+                                <option value="">— select car —</option>
+                                @foreach (var d in _liveDrivers)
+                                {
+                                    <option value="@d.CarId">#@d.CarId  @d.DriverName</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <span class="tc-empty">No live session active.</span>
+                        }
+                    </div>
+
+                    <div class="tc-stat-row">
+                        <span class="tc-stat-label">Points recorded</span>
+                        <span class="tc-stat-badge @(_isRecording ? "tc-badge-rec" : "")">@_recordedPath.Count</span>
+                    </div>
+
+                    <div class="tc-actions">
+                        @if (!_isRecording)
+                        {
+                            <button class="tc-btn tc-btn-primary" @onclick="StartRecording"
+                                    disabled="@(string.IsNullOrEmpty(_recordingCarIdStr))">Start</button>
+                        }
+                        else
+                        {
+                            <button class="tc-btn tc-btn-ghost tc-btn-danger" @onclick="StopRecording">Stop</button>
+                        }
+                        <button class="tc-btn tc-btn-ghost" @onclick="ClearRecordedPath"
+                                disabled="@(_recordedPath.Count == 0)">Clear</button>
+                    </div>
+
+                    @if (_recordedPath.Count >= 2)
+                    {
+                        <div class="tc-use-path">
+                            <button class="tc-btn tc-btn-secondary tc-btn-full" @onclick="UseRecordedPathAsPitLane">
+                                → Use as Pit Lane Center Line
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+
+        </aside>
+
+        <!-- Map area -->
+        <div class="tc-map-area">
+            @if (string.IsNullOrEmpty(_selectedTrackKey))
+            {
+                <div class="tc-map-placeholder">
+                    <span>Select a track above to begin</span>
+                </div>
+            }
+            else
+            {
+                var trackOpt = _tracks.FirstOrDefault(t => TrackKey(t) == _selectedTrackKey);
+                <TrackMap @key="_selectedTrackKey"
+                          TrackName="@trackOpt?.Name"
+                          TrackConfig="@trackOpt?.Config"
+                          EditMode="@(_activeTool != Tool.RecordPath)"
+                          PoiOverlays="@ComputeOverlays()"
+                          OnMapClick="HandleMapClick" />
+            }
+        </div>
+
+    </div>
+</div>
+
+@code {
+
+    private enum Tool { PitLane, SpeedTrap, RecordPath }
+
+    // ── Track selection ────────────────────────────────────────────────────
+    private record TrackOption(string Name, string? Config, string DisplayName);
+    private List<TrackOption> _tracks = [];
+    private string _selectedTrackKey = "";
+    private TrackConfig? _currentConfig;
+
+    // ── Status ────────────────────────────────────────────────────────────
+    private string _statusMsg = "";
+    private bool _statusError;
+    private bool _isSaving;
+
+    // ── Active tool ───────────────────────────────────────────────────────
+    private Tool _activeTool = Tool.PitLane;
+
+    // ── Pit Lane state ────────────────────────────────────────────────────
+    private List<WorldPoint> _pitCenterLine = [];
+    private float _pitHalfWidth = 8f;
+    private bool _showPitPolygon = true;
+
+    // ── Speed Trap state ──────────────────────────────────────────────────
+    private List<SpeedTrapDefinition> _speedTraps = [];
+    private WorldPoint? _trapP1;
+    private string _trapName = "";
+
+    // ── Record Path state ─────────────────────────────────────────────────
+    private List<WorldPoint> _recordedPath = [];
+    private bool _isRecording;
+    private string _recordingCarIdStr = "";
+    private HubConnection? _hubConnection;
+    private List<LiveDriver> _liveDrivers = [];
+
+    private int? RecordingCarId =>
+        int.TryParse(_recordingCarIdStr, out var id) ? id : (int?)null;
+
+    private string SpeedTrapHint => _trapP1 is null
+        ? "Click the map to place the start point."
+        : "Now click the map to place the end point.";
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+
+    protected override void OnInitialized() => ScanTracks();
+
+    private void ScanTracks()
+    {
+        var mapsRoot = Path.Combine(Env.WebRootPath, "maps");
+        if (!Directory.Exists(mapsRoot)) return;
+
+        foreach (var dir in Directory.EnumerateDirectories(mapsRoot).Order())
+        {
+            var trackName = Path.GetFileName(dir);
+            if (File.Exists(Path.Combine(dir, "map.ini")))
+                _tracks.Add(new TrackOption(trackName, null, trackName));
+
+            foreach (var sub in Directory.EnumerateDirectories(dir).Order())
+            {
+                if (File.Exists(Path.Combine(sub, "map.ini")))
+                {
+                    var cfg = Path.GetFileName(sub);
+                    _tracks.Add(new TrackOption(trackName, cfg, $"{trackName} / {cfg}"));
+                }
+            }
+        }
+    }
+
+    private static string TrackKey(TrackOption t) =>
+        string.IsNullOrEmpty(t.Config) ? t.Name : $"{t.Name}/{t.Config}";
+
+    private TrackOption? SelectedTrack =>
+        _tracks.FirstOrDefault(t => TrackKey(t) == _selectedTrackKey);
+
+    // ── Load / Save ───────────────────────────────────────────────────────
+
+    private async Task LoadConfigAsync()
+    {
+        var track = SelectedTrack;
+        if (track is null) return;
+
+        _statusMsg = "";
+        _currentConfig = await ConfigRepo.FindByTrackAsync(track.Name, track.Config);
+        _pitCenterLine = _currentConfig?.PitLane?.CenterLine.ToList() ?? [];
+        _pitHalfWidth  = _currentConfig?.PitLane?.HalfWidthMeters ?? 8f;
+        _speedTraps    = _currentConfig?.SpeedTraps.ToList() ?? [];
+        _trapP1        = null;
+        _trapName      = "";
+
+        _statusMsg = _currentConfig is not null
+            ? $"Loaded: {_pitCenterLine.Count} pit pts, {_speedTraps.Count} trap{(_speedTraps.Count != 1 ? "s" : "")}"
+            : "No saved config — starting fresh";
+        _statusError = false;
+    }
+
+    private async Task SaveConfigAsync()
+    {
+        var track = SelectedTrack;
+        if (track is null) return;
+
+        _isSaving = true;
+        _statusMsg = "";
+        try
+        {
+            if (_currentConfig is null)
+            {
+                _currentConfig = new TrackConfig
+                {
+                    Track = new Track { Name = track.Name, Config = track.Config },
+                };
+            }
+
+            _currentConfig.PitLane = _pitCenterLine.Count >= 2
+                ? new PitLaneDefinition
+                {
+                    CenterLine      = [.. _pitCenterLine],
+                    HalfWidthMeters = _pitHalfWidth,
+                }
+                : null;
+
+            _currentConfig.SpeedTraps = [.. _speedTraps];
+
+            await ConfigRepo.SaveAsync(_currentConfig);
+            _statusMsg   = "Saved";
+            _statusError = false;
+        }
+        catch (Exception ex)
+        {
+            _statusMsg   = $"Error: {ex.Message}";
+            _statusError = true;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // ── Tool switching ────────────────────────────────────────────────────
+
+    private void SwitchToPitLane()
+    {
+        _activeTool = Tool.PitLane;
+        _trapP1     = null;
+    }
+
+    private void SwitchToSpeedTrap()
+    {
+        _activeTool = Tool.SpeedTrap;
+        _trapP1     = null;
+    }
+
+    private async Task SwitchToRecordPath()
+    {
+        _activeTool = Tool.RecordPath;
+        _trapP1     = null;
+        if (_hubConnection is null)
+            await ConnectHubAsync();
+    }
+
+    // ── Map click ─────────────────────────────────────────────────────────
+
+    private Task HandleMapClick(WorldPoint pt)
+    {
+        switch (_activeTool)
+        {
+            case Tool.PitLane:
+                _pitCenterLine.Add(pt);
+                break;
+
+            case Tool.SpeedTrap:
+                if (_trapP1 is null)
+                {
+                    _trapP1 = pt;
+                }
+                else
+                {
+                    _speedTraps.Add(new SpeedTrapDefinition
+                    {
+                        Name   = string.IsNullOrWhiteSpace(_trapName)
+                                     ? $"Trap {_speedTraps.Count + 1}"
+                                     : _trapName.Trim(),
+                        Point1 = _trapP1,
+                        Point2 = pt,
+                    });
+                    _trapP1   = null;
+                    _trapName = "";
+                }
+                break;
+        }
+        return Task.CompletedTask;
+    }
+
+    // ── Pit Lane actions ──────────────────────────────────────────────────
+
+    private void UndoLastPitPoint()
+    {
+        if (_pitCenterLine.Count > 0)
+            _pitCenterLine.RemoveAt(_pitCenterLine.Count - 1);
+    }
+
+    private void ClearPitLane() => _pitCenterLine.Clear();
+
+    private void OnHalfWidthInput(ChangeEventArgs e)
+    {
+        if (float.TryParse(e.Value?.ToString(), out var v))
+            _pitHalfWidth = v;
+    }
+
+    // ── Speed Trap actions ────────────────────────────────────────────────
+
+    private void CancelTrap()    => _trapP1 = null;
+    private void DeleteTrap(Guid id) => _speedTraps.RemoveAll(t => t.Id == id);
+
+    // ── Record Path actions ───────────────────────────────────────────────
+
+    private async Task ConnectHubAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri(LiveTimingHub.HubUrl))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<LiveTimingSnapshot>(LiveTimingHubMethods.StateSnapshot, snapshot =>
+        {
+            _liveDrivers = snapshot.Leaderboard.Where(d => d.IsConnected).ToList();
+
+            if (_isRecording)
+                TryRecordPoint(snapshot);
+
+            InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private void TryRecordPoint(LiveTimingSnapshot snapshot)
+    {
+        var carId = RecordingCarId;
+        if (carId is null) return;
+
+        var driver = snapshot.Leaderboard.FirstOrDefault(d => d.CarId == carId);
+        if (driver is null || (driver.WorldX == 0f && driver.WorldZ == 0f)) return;
+
+        var pt = new WorldPoint(driver.WorldX, driver.WorldZ);
+        if (_recordedPath.Count > 0)
+        {
+            var last = _recordedPath[^1];
+            var dx   = pt.X - last.X;
+            var dz   = pt.Z - last.Z;
+            if (MathF.Sqrt(dx * dx + dz * dz) < 2f) return;
+        }
+
+        _recordedPath.Add(pt);
+    }
+
+    private void StartRecording()
+    {
+        _recordedPath.Clear();
+        _isRecording = true;
+    }
+
+    private void StopRecording() => _isRecording = false;
+
+    private void ClearRecordedPath()
+    {
+        _recordedPath.Clear();
+        _isRecording = false;
+    }
+
+    private void UseRecordedPathAsPitLane()
+    {
+        if (_recordedPath.Count < 2) return;
+        _pitCenterLine = [.. _recordedPath];
+        _recordedPath.Clear();
+        _isRecording = false;
+        SwitchToPitLane();
+    }
+
+    // ── Overlay computation ───────────────────────────────────────────────
+
+    private IReadOnlyList<PoiOverlay> ComputeOverlays()
+    {
+        var overlays = new List<PoiOverlay>();
+
+        if (_pitCenterLine.Count >= 2)
+        {
+            if (_showPitPolygon)
+            {
+                var def = new PitLaneDefinition
+                {
+                    CenterLine      = _pitCenterLine,
+                    HalfWidthMeters = _pitHalfWidth,
+                };
+                overlays.Add(new PitLaneOverlay(def.ToPolygon()));
+            }
+            overlays.Add(new PathOverlay(_pitCenterLine, "#f59e0b", 0.9f));
+        }
+
+        foreach (var trap in _speedTraps)
+            overlays.Add(new SpeedTrapOverlay(trap.Name, trap.Point1, trap.Point2));
+
+        if (_recordedPath.Count >= 2)
+            overlays.Add(new PathOverlay(_recordedPath, "#a855f7", 0.75f));
+
+        return overlays;
+    }
+
+    // ── Dispose ───────────────────────────────────────────────────────────
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+}

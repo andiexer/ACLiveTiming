@@ -3,6 +3,7 @@ using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Infrastructure.AcServer;
 using Devlabs.AcTiming.Infrastructure.Persistence;
+using Devlabs.AcTiming.Infrastructure.Repositories;
 using Devlabs.AcTiming.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,7 @@ public static class DependencyInjection
             configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' not found.");
         services.AddDbContext<AcTimingDbContext>(options => options.UseSqlite(connectionString));
+        services.AddScoped<ITrackConfigRepository, TrackConfigRepository>();
 
         services.Configure<AcServerOptions>(configuration.GetSection(AcServerOptions.SectionName));
         services.AddSingleton<ICarBrandResolver, CarBrandResolver>();

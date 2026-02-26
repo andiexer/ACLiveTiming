@@ -1,10 +1,16 @@
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 
-public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatusTracker tracker)
-    : ISimEventEnricher
+public sealed class PitStatusEnricher(
+    IServiceScopeFactory scopeFactory,
+    IPitLaneProvider pitLaneProvider,
+    PitStatusTracker tracker,
+    ILogger<PitStatusEnricher> logger
+) : ISimEventEnricher
 {
     public EnricherPhase Phase => EnricherPhase.Pre;
 
@@ -13,9 +19,8 @@ public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatu
         switch (ev)
         {
             case SimEventSessionInfoReceived s:
-                tracker.ResetAll();
-                tracker.LoadSpline(pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig));
-                return ValueTask.FromResult<IReadOnlyList<SimEvent>>([]);
+                // Async: try DB config first, fall back to file-based spline
+                return LoadPitDataAndResetAsync(s, ct);
 
             case SimEventSessionEnded:
                 tracker.ResetAll();
@@ -39,5 +44,62 @@ public sealed class PitStatusEnricher(IPitLaneProvider pitLaneProvider, PitStatu
             default:
                 return ValueTask.FromResult<IReadOnlyList<SimEvent>>([]);
         }
+    }
+
+    private async ValueTask<IReadOnlyList<SimEvent>> LoadPitDataAndResetAsync(
+        SimEventSessionInfoReceived s,
+        CancellationToken ct
+    )
+    {
+        tracker.ResetAll();
+
+        try
+        {
+            // Create a short-lived scope to resolve the scoped repository
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ITrackConfigRepository>();
+            var config = await repo.FindByTrackAsync(s.TrackName, s.TrackConfig, ct);
+
+            if (config?.PitLane is { } pitLane)
+            {
+                var polygon = pitLane.ToPolygon();
+                if (polygon.Count >= 3)
+                {
+                    tracker.LoadPolygon(polygon);
+                    logger.LogInformation(
+                        "Pit detection: using DB polygon ({Count} vertices) for {Track}",
+                        polygon.Count,
+                        s.TrackName
+                    );
+                    return [];
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to load TrackConfig from DB for {Track}, falling back to pit_lane.ai",
+                s.TrackName
+            );
+        }
+
+        // Fallback: legacy pit_lane.ai spline
+        var spline = pitLaneProvider.LoadPoints(s.TrackName, s.TrackConfig);
+        tracker.LoadSpline(spline);
+
+        if (spline is { Length: > 0 })
+            logger.LogInformation(
+                "Pit detection: using spline fallback ({Count} points) for {Track}",
+                spline.Length,
+                s.TrackName
+            );
+        else
+            logger.LogInformation(
+                "Pit detection: no data available for {Track}, pit detection disabled",
+                s.TrackName
+            );
+
+        return [];
     }
 }
