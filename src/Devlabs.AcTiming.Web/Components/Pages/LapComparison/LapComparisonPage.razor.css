@@ -137,6 +137,88 @@
     text-align: center;
 }
 
+/* ── AI Coach panel ──────────────────────────────────────────────────────── */
+.lc-ai-panel {
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.lc-ai-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.lc-ai-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.lc-ai-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #7C83B0;
+    border: 1px solid #7C83B0;
+    border-radius: 3px;
+    padding: 0 0.3rem;
+}
+
+.lc-ai-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.lc-ai-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.lc-ai-spinner {
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--text-muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: lc-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes lc-spin {
+    to { transform: rotate(360deg); }
+}
+
+.lc-ai-response {
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.lc-ai-placeholder {
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.lc-ai-error {
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    color: #e94560;
+}
+
 /* ── Suppress ApexCharts marker dots (static + hover) ───────────────────── */
 :deep(.apexcharts-series-markers circle) {
     display: none !important;

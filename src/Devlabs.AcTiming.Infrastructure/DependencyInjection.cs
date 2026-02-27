@@ -2,6 +2,7 @@ using Devlabs.AcTiming.Application.Cars;
 using Devlabs.AcTiming.Application.LiveTiming;
 using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Infrastructure.AcServer;
+using Devlabs.AcTiming.Infrastructure.AiChat;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Infrastructure.Repositories;
 using Devlabs.AcTiming.Infrastructure.Services;
@@ -31,6 +32,9 @@ public static class DependencyInjection
         services.AddSingleton<AcUdpEventSource>();
         services.AddSingleton<ISimEventSource>(sp => sp.GetRequiredService<AcUdpEventSource>());
         services.AddHostedService(sp => sp.GetRequiredService<AcUdpEventSource>());
+
+        services.AddOllamaAiChat(configuration);
+
         return services;
     }
 }

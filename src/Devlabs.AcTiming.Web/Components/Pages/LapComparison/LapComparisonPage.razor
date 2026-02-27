@@ -1,5 +1,6 @@
 @page "/lap-comparison"
 @using Devlabs.AcTiming.Application.LiveTiming
+@using Devlabs.AcTiming.Application.Shared
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Domain.Shared
 @using Devlabs.AcTiming.Web.LiveTiming
@@ -146,6 +147,47 @@
                         </div>
                     }
                 }
+
+                <!-- ── AI Coach panel ──────────────────────────────────────────── -->
+                @if (AiChat.IsEnabled)
+                {
+                    <div class="lc-ai-panel">
+                        <div class="lc-ai-header">
+                            <span class="lc-ai-title">AI Coach</span>
+                            <span class="lc-ai-badge">BETA</span>
+                            <button class="lc-btn lc-ai-btn"
+                                    disabled="@(!CanAskAi)"
+                                    @onclick="AskAiAsync">
+                                @if (_aiAnalyzing)
+                                {
+                                    <span class="lc-ai-spinner"></span>
+                                    <span>Analyzing…</span>
+                                }
+                                else
+                                {
+                                    <span>Analyze Lap</span>
+                                }
+                            </button>
+                        </div>
+
+                        @if (_aiResponse is not null)
+                        {
+                            <div class="lc-ai-response">@_aiResponse</div>
+                        }
+                        else if (_aiError is not null)
+                        {
+                            <div class="lc-ai-error">@_aiError</div>
+                        }
+                        else if (_aiAnalyzing)
+                        {
+                            <div class="lc-ai-placeholder">Running telemetry analysis, this may take a moment…</div>
+                        }
+                        else
+                        {
+                            <div class="lc-ai-placeholder">Select two laps above and click "Analyze Lap" to get coaching advice.</div>
+                        }
+                    </div>
+                }
             </div>
 
         </div>
@@ -202,6 +244,9 @@
 
     public async ValueTask DisposeAsync()
     {
+        _aiCts?.Cancel();
+        _aiCts?.Dispose();
+
         if (_lcJs is not null)
         {
             await _lcJs.InvokeVoidAsync("dispose");
