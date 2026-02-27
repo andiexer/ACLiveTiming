@@ -1,0 +1,571 @@
+@page "/lap-comparison"
+@using Devlabs.AcTiming.Application.LiveTiming
+@using Devlabs.AcTiming.Domain.LiveTiming
+@using Devlabs.AcTiming.Domain.Shared
+@using Devlabs.AcTiming.Web.LiveTiming
+@inject ILiveTimingService LiveTimingService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Lap Comparison – AC Timing</PageTitle>
+
+<div class="lc-page">
+
+    <!-- ── Header ───────────────────────────────────────────────────────────── -->
+    <div class="lc-header">
+        <span class="lc-title">Lap Comparison</span>
+
+        <div class="lc-selector-group">
+            <div class="lc-swatch lc-swatch-a"></div>
+            <select class="lc-select" @bind="_keyA">
+                <option value="">— Driver A —</option>
+                @foreach (var lap in _bestLaps)
+                {
+                    <option value="@LapKey(lap)">@LapLabel(lap)</option>
+                }
+            </select>
+        </div>
+
+        <div class="lc-selector-group">
+            <div class="lc-swatch lc-swatch-b"></div>
+            <select class="lc-select" @bind="_keyB">
+                <option value="">— Driver B —</option>
+                @foreach (var lap in _bestLaps)
+                {
+                    <option value="@LapKey(lap)">@LapLabel(lap)</option>
+                }
+            </select>
+        </div>
+
+        <button class="lc-btn" @onclick="Refresh">Refresh</button>
+    </div>
+
+    @if (_bestLaps.Count == 0)
+    {
+        <div class="lc-empty-page">
+            <span>No clean laps recorded in the current session yet.</span>
+        </div>
+    }
+    else
+    {
+        var lapA    = SelectedLap(_keyA);
+        var lapB    = SelectedLap(_keyB);
+        var session = LiveTimingService.GetCurrentSession();
+
+        // Resample both laps onto a shared uniform spline grid.
+        // All three charts use this same GridPoint list — both drivers share
+        // identical x-values, so the crosshair, map marker, and delta are
+        // always perfectly in sync.
+        GridPoint[] grid     = (lapA is not null || lapB is not null)
+                               ? GetCachedGrid(lapA, lapB)
+                               : [];
+        GridPoint[] gridForA = lapA is not null ? grid : [];
+        GridPoint[] gridForB = lapB is not null ? grid : [];
+
+        <div class="lc-body">
+
+            <!-- ── Track map ──────────────────────────────────────────────────── -->
+            <div class="lc-map-area">
+                <TrackMap TrackName="@session?.TrackName"
+                          TrackConfig="@session?.TrackConfig"
+                          Drivers="[]"
+                          PoiOverlays="@BuildOverlays(lapA, lapB)" />
+            </div>
+
+            <!-- ── Charts ─────────────────────────────────────────────────────── -->
+            <div class="lc-charts" @ref="_chartsRef">
+                @if (lapA is null && lapB is null)
+                {
+                    <div class="lc-charts-empty">Select at least one driver above to see charts.</div>
+                }
+                else
+                {
+                    <!-- Speed -->
+                    <div class="lc-chart-card">
+                        <div class="lc-chart-title">Speed <span class="lc-chart-unit">km/h</span></div>
+                        <ApexChart TItem="GridPoint"
+                                   Options="_speedOptions"
+                                   Height="220"
+                                   @key="@($"spd|{_keyA}|{_keyB}")">
+                            <ApexPointSeries TItem="GridPoint"
+                                             Items="@gridForA"
+                                             Name="@SeriesName(lapA, "Driver A")"
+                                             SeriesType="SeriesType.Line"
+                                             XValue="@(p => p.Spline)"
+                                             YValue="@(p => p.SpeedA)" />
+                            <ApexPointSeries TItem="GridPoint"
+                                             Items="@gridForB"
+                                             Name="@SeriesName(lapB, "Driver B")"
+                                             SeriesType="SeriesType.Line"
+                                             XValue="@(p => p.Spline)"
+                                             YValue="@(p => p.SpeedB)" />
+                        </ApexChart>
+                    </div>
+
+                    <!-- Gear -->
+                    <div class="lc-chart-card">
+                        <div class="lc-chart-title">Gear</div>
+                        <ApexChart TItem="GridPoint"
+                                   Options="_gearOptions"
+                                   Height="180"
+                                   @key="@($"gear|{_keyA}|{_keyB}")">
+                            <ApexPointSeries TItem="GridPoint"
+                                             Items="@gridForA"
+                                             Name="@SeriesName(lapA, "Driver A")"
+                                             SeriesType="SeriesType.Line"
+                                             XValue="@(p => p.Spline)"
+                                             YValue="@(p => (decimal?)p.GearA)" />
+                            <ApexPointSeries TItem="GridPoint"
+                                             Items="@gridForB"
+                                             Name="@SeriesName(lapB, "Driver B")"
+                                             SeriesType="SeriesType.Line"
+                                             XValue="@(p => p.Spline)"
+                                             YValue="@(p => (decimal?)p.GearB)" />
+                        </ApexChart>
+                    </div>
+
+                    <!-- Delta — only when both laps are selected -->
+                    @if (lapA is not null && lapB is not null)
+                    {
+                        <div class="lc-chart-card">
+                            <div class="lc-chart-title">
+                                Delta
+                                <span class="lc-chart-unit">s  (+&nbsp;=&nbsp;A&nbsp;ahead)</span>
+                            </div>
+                            <ApexChart TItem="GridPoint"
+                                       Options="_deltaOptions"
+                                       Height="160"
+                                       @key="@($"delta|{_keyA}|{_keyB}")">
+                                <ApexPointSeries TItem="GridPoint"
+                                                 Items="@grid"
+                                                 Name="Δ A − B"
+                                                 SeriesType="SeriesType.Line"
+                                                 XValue="@(p => p.Spline)"
+                                                 YValue="@(p => p.DeltaSeconds)" />
+                            </ApexChart>
+                        </div>
+                    }
+                }
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    // ── State ─────────────────────────────────────────────────────────────────
+
+    private IReadOnlyList<BestLapTelemetry> _bestLaps = [];
+    private string _keyA = "";
+    private string _keyB = "";
+    private int?   _hoveredIndex;
+
+    // Grid cache — resampled data; only recomputed when the selection changes.
+    private GridPoint[]? _cachedGrid;
+    private string _cachedGridKeyA = "";
+    private string _cachedGridKeyB = "";
+
+    // ── Chart options (static — one instance shared, avoids per-render allocation) ──
+
+    private static readonly ApexChartOptions<GridPoint> _speedOptions = BuildSpeedOptions();
+    private static readonly ApexChartOptions<GridPoint> _gearOptions  = BuildGearOptions();
+    private static readonly ApexChartOptions<GridPoint> _deltaOptions = BuildDeltaOptions();
+
+    // ── JS interop (map marker via mousemove) ──────────────────────────────────
+
+    private ElementReference _chartsRef;
+    private IJSObjectReference? _lcJs;
+    private DotNetObjectReference<LapComparisonPage>? _selfRef;
+    private bool _jsInitialized;
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override void OnInitialized() => LoadBestLaps();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            _lcJs    = await JS.InvokeAsync<IJSObjectReference>("import", "/js/lapComparison.js");
+        }
+
+        // Init JS once the charts panel is in the DOM (requires at least one lap).
+        if (!_jsInitialized && _lcJs is not null && _bestLaps.Count > 0)
+        {
+            _jsInitialized = true;
+            await _lcJs.InvokeVoidAsync("init", _selfRef, _chartsRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_lcJs is not null)
+        {
+            await _lcJs.InvokeVoidAsync("dispose");
+            await _lcJs.DisposeAsync();
+        }
+        _selfRef?.Dispose();
+    }
+
+    private void Refresh() => LoadBestLaps();
+
+    private void LoadBestLaps()
+    {
+        _bestLaps = [.. LiveTimingService.GetBestLaps()
+            .OrderBy(l => l.DriverName)
+            .ThenBy(l => l.CarModel)];
+
+        if (_bestLaps.All(l => LapKey(l) != _keyA)) _keyA = "";
+        if (_bestLaps.All(l => LapKey(l) != _keyB)) _keyB = "";
+        _cachedGrid = null; // invalidate on refresh
+    }
+
+    // ── Selection helpers ─────────────────────────────────────────────────────
+
+    private BestLapTelemetry? SelectedLap(string key) =>
+        string.IsNullOrEmpty(key) ? null : _bestLaps.FirstOrDefault(l => LapKey(l) == key);
+
+    private static string LapKey(BestLapTelemetry l)  => $"{l.DriverGuid}|{l.CarModel}";
+    private static string LapLabel(BestLapTelemetry l) => $"{l.DriverName}  —  {l.CarModel}   {FormatLapTime(l.LapTimeMs)}";
+    private static string SeriesName(BestLapTelemetry? l, string fallback) =>
+        l is null ? fallback : $"{l.DriverName}  {FormatLapTime(l.LapTimeMs)}";
+
+    private static string FormatLapTime(int ms)
+    {
+        var t = TimeSpan.FromMilliseconds(ms);
+        return t.TotalMinutes >= 1
+            ? $"{(int)t.TotalMinutes}:{t.Seconds:D2}.{t.Milliseconds:D3}"
+            : $"{t.Seconds}.{t.Milliseconds:D3}";
+    }
+
+    // ── Chart hover → map marker (driven by JS index in lapComparison.js) ────
+
+    [JSInvokable]
+    public async Task OnChartHover(int index)
+    {
+        if (_hoveredIndex == index) return;
+        _hoveredIndex = index;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnChartMouseLeave()
+    {
+        if (_hoveredIndex is null) return;
+        _hoveredIndex = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ── Map overlays ──────────────────────────────────────────────────────────
+
+    private IReadOnlyList<PoiOverlay> BuildOverlays(BestLapTelemetry? lapA, BestLapTelemetry? lapB)
+    {
+        var overlays = new List<PoiOverlay>(4);
+        // Path lines use full raw samples for maximum fidelity.
+        if (lapA is not null) overlays.Add(new PathOverlay(ToWorldPoints(lapA.Samples), "#4ecca3", 0.85f));
+        if (lapB is not null) overlays.Add(new PathOverlay(ToWorldPoints(lapB.Samples), "#e94560", 0.85f));
+
+        // Position markers come straight from the pre-interpolated grid — O(1), no search.
+        if (_hoveredIndex.HasValue && _cachedGrid is not null
+            && _hoveredIndex.Value < _cachedGrid.Length)
+        {
+            var pt = _cachedGrid[_hoveredIndex.Value];
+            if (lapA is not null) overlays.Add(new PointMarkerOverlay(new WorldPoint(pt.WorldXA, pt.WorldZA), "#4ecca3"));
+            if (lapB is not null) overlays.Add(new PointMarkerOverlay(new WorldPoint(pt.WorldXB, pt.WorldZB), "#e94560"));
+        }
+
+        return overlays;
+    }
+
+    private static IReadOnlyList<WorldPoint> ToWorldPoints(IReadOnlyList<LapTelemetrySample> samples) =>
+        [.. samples.Select(s => new WorldPoint(s.WorldX, s.WorldZ))];
+
+    // ── Grid resampling ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// One point in the uniform shared grid.  Both drivers are interpolated to
+    /// the same spline position so every chart index maps to identical track %.
+    /// </summary>
+    private sealed record GridPoint(
+        decimal  Spline,
+        decimal? SpeedA, int? GearA, float WorldXA, float WorldZA,
+        decimal? SpeedB, int? GearB, float WorldXB, float WorldZB,
+        decimal? DeltaSeconds);
+
+    /// <summary>Number of evenly-spaced grid points (0 % … 100 %).</summary>
+    private const int GridSize = 500;
+
+    private GridPoint[] GetCachedGrid(BestLapTelemetry? lapA, BestLapTelemetry? lapB)
+    {
+        if (_keyA == _cachedGridKeyA && _keyB == _cachedGridKeyB && _cachedGrid is not null)
+            return _cachedGrid;
+
+        _cachedGrid     = BuildGrid(lapA, lapB);
+        _cachedGridKeyA = _keyA;
+        _cachedGridKeyB = _keyB;
+        return _cachedGrid;
+    }
+
+    private static GridPoint[] BuildGrid(BestLapTelemetry? lapA, BestLapTelemetry? lapB)
+    {
+        var timesA = lapA is not null ? BuildCumulativeTimes(lapA) : null;
+        var timesB = lapB is not null ? BuildCumulativeTimes(lapB) : null;
+        var grid   = new GridPoint[GridSize];
+
+        for (var i = 0; i < GridSize; i++)
+        {
+            var spline = (float)i / (GridSize - 1);
+
+            decimal? speedA = null; int? gearA = null; float wxA = 0f, wzA = 0f;
+            decimal? speedB = null; int? gearB = null; float wxB = 0f, wzB = 0f;
+
+            if (lapA is not null)
+            {
+                var (s, g, wx, wz) = Interpolate(lapA.Samples, spline);
+                speedA = (decimal)s; gearA = g; wxA = wx; wzA = wz;
+            }
+            if (lapB is not null)
+            {
+                var (s, g, wx, wz) = Interpolate(lapB.Samples, spline);
+                speedB = (decimal)s; gearB = g; wxB = wx; wzB = wz;
+            }
+
+            decimal? delta = null;
+            if (timesA is not null && timesB is not null)
+            {
+                var msA = LerpTime(timesA, spline);
+                var msB = LerpTime(timesB, spline);
+                delta = Math.Round((decimal)(msB - msA) / 1000m, 3);
+            }
+
+            grid[i] = new GridPoint(
+                (decimal)spline,
+                speedA, gearA, wxA, wzA,
+                speedB, gearB, wxB, wzB,
+                delta);
+        }
+
+        return grid;
+    }
+
+    /// <summary>
+    /// Linearly interpolates Speed, WorldX, WorldZ at <paramref name="spline"/>.
+    /// Gear uses nearest-neighbour (no such thing as gear 2.7).
+    /// </summary>
+    private static (float Speed, int Gear, float WorldX, float WorldZ) Interpolate(
+        IReadOnlyList<LapTelemetrySample> samples, float spline)
+    {
+        if (samples.Count == 0) return default;
+        if (spline <= samples[0].SplinePosition)
+            return (samples[0].SpeedKmh, samples[0].Gear, samples[0].WorldX, samples[0].WorldZ);
+        if (spline >= samples[^1].SplinePosition)
+            return (samples[^1].SpeedKmh, samples[^1].Gear, samples[^1].WorldX, samples[^1].WorldZ);
+
+        int lo = 0, hi = samples.Count - 1;
+        while (lo + 1 < hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (samples[mid].SplinePosition <= spline) lo = mid; else hi = mid;
+        }
+
+        var s0 = samples[lo];
+        var s1 = samples[hi];
+        var dx = s1.SplinePosition - s0.SplinePosition;
+        var t  = dx > 0f ? (spline - s0.SplinePosition) / dx : 0f;
+
+        return (
+            s0.SpeedKmh + t * (s1.SpeedKmh - s0.SpeedKmh),
+            t < 0.5f ? s0.Gear : s1.Gear,
+            s0.WorldX + t * (s1.WorldX - s0.WorldX),
+            s0.WorldZ + t * (s1.WorldZ - s0.WorldZ)
+        );
+    }
+
+    // ── Cumulative-time helpers (used by BuildGrid for delta) ─────────────────
+
+    /// <summary>
+    /// Builds a (SplinePosition, CumulativeMs) array scaled so the last entry = lap.LapTimeMs.
+    /// Uses speed-weighted integration: time ∝ Δspline / avgSpeed.
+    /// </summary>
+    private static (float Spline, float CumulativeMs)[] BuildCumulativeTimes(BestLapTelemetry lap)
+    {
+        var s = lap.Samples;
+        if (s.Count == 0) return [];
+        var result = new (float Spline, float CumulativeMs)[s.Count];
+        result[0] = (s[0].SplinePosition, 0f);
+        float total = 0f;
+        for (var i = 1; i < s.Count; i++)
+        {
+            var ds     = MathF.Max(0f, s[i].SplinePosition - s[i - 1].SplinePosition);
+            var avgKmh = MathF.Max(1f, (s[i].SpeedKmh + s[i - 1].SpeedKmh) * 0.5f);
+            total     += ds / avgKmh;
+            result[i]  = (s[i].SplinePosition, total);
+        }
+        if (total > 0f)
+        {
+            var scale = lap.LapTimeMs / total;
+            for (var i = 1; i < result.Length; i++)
+                result[i] = (result[i].Spline, result[i].CumulativeMs * scale);
+        }
+        return result;
+    }
+
+    private static float LerpTime((float Spline, float CumulativeMs)[] times, float target)
+    {
+        if (times.Length == 0) return 0f;
+        if (target <= times[0].Spline)  return times[0].CumulativeMs;
+        if (target >= times[^1].Spline) return times[^1].CumulativeMs;
+        int lo = 0, hi = times.Length - 1;
+        while (lo + 1 < hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (times[mid].Spline <= target) lo = mid; else hi = mid;
+        }
+        var t = (target - times[lo].Spline) / (times[hi].Spline - times[lo].Spline);
+        return times[lo].CumulativeMs + t * (times[hi].CumulativeMs - times[lo].CumulativeMs);
+    }
+
+    // ── Chart configuration ───────────────────────────────────────────────────
+
+    private static ApexChartOptions<GridPoint> BuildSpeedOptions() => new()
+    {
+        Theme  = new Theme { Mode = Mode.Dark },
+        Chart  = new Chart
+        {
+            Id         = "lc-speed",
+            Group      = "lc",
+            Background = "transparent",
+            Toolbar    = new Toolbar { Show = false },
+            Animations = new Animations { Enabled = false },
+            FontFamily = "Segoe UI, system-ui, -apple-system, sans-serif",
+        },
+        Colors  = ["#4ecca3", "#e94560"],
+        Stroke  = new Stroke { Curve = Curve.Smooth, Width = 2 },
+        Markers = new Markers { Size = 0, Hover = new MarkersHover { Size = 0, SizeOffset = 0 } },
+        Xaxis   = new XAxis
+        {
+            Type       = XAxisType.Numeric,
+            TickAmount = 10,
+            Labels     = new XAxisLabels
+            {
+                Formatter = "function(val) { return Math.round(val * 100) + '%'; }",
+            },
+        },
+        Yaxis  = [new YAxis { Title = new AxisTitle { Text = "km/h" } }],
+        Grid   = new Grid { BorderColor = "#262B55" },
+        Legend = new Legend { Show = true, Position = LegendPosition.Top },
+        Tooltip = new Tooltip
+        {
+            Shared    = true,
+            Intersect = false,
+            X = new TooltipX { Formatter = "function(val) { return (val * 100).toFixed(1) + '%'; }" },
+        },
+    };
+
+    private static ApexChartOptions<GridPoint> BuildGearOptions() => new()
+    {
+        Theme  = new Theme { Mode = Mode.Dark },
+        Chart  = new Chart
+        {
+            Id         = "lc-gear",
+            Group      = "lc",
+            Background = "transparent",
+            Toolbar    = new Toolbar { Show = false },
+            Animations = new Animations { Enabled = false },
+            FontFamily = "Segoe UI, system-ui, -apple-system, sans-serif",
+        },
+        Colors  = ["#4ecca3", "#e94560"],
+        Stroke  = new Stroke { Curve = Curve.Stepline, Width = 2 },
+        Markers = new Markers { Size = 0, Hover = new MarkersHover { Size = 0, SizeOffset = 0 } },
+        Xaxis  = new XAxis
+        {
+            Type       = XAxisType.Numeric,
+            TickAmount = 10,
+            Labels     = new XAxisLabels
+            {
+                Formatter = "function(val) { return Math.round(val * 100) + '%'; }",
+            },
+        },
+        Yaxis  = [new YAxis
+        {
+            Title      = new AxisTitle { Text = "Gear" },
+            Min        = 0,
+            Max        = 8,
+            TickAmount = 8,
+            Labels     = new YAxisLabels
+            {
+                Formatter = "function(val) { return Math.round(val); }",
+            },
+        }],
+        Grid   = new Grid { BorderColor = "#262B55" },
+        Legend = new Legend { Show = true, Position = LegendPosition.Top },
+        Tooltip = new Tooltip
+        {
+            Shared    = true,
+            Intersect = false,
+            X = new TooltipX { Formatter = "function(val) { return (val * 100).toFixed(1) + '%'; }" },
+        },
+    };
+
+    private static ApexChartOptions<GridPoint> BuildDeltaOptions() => new()
+    {
+        Theme  = new Theme { Mode = Mode.Dark },
+        Chart  = new Chart
+        {
+            Id         = "lc-delta",
+            Group      = "lc",
+            Background = "transparent",
+            Toolbar    = new Toolbar { Show = false },
+            Animations = new Animations { Enabled = false },
+            FontFamily = "Segoe UI, system-ui, -apple-system, sans-serif",
+        },
+        Colors  = ["#3B82F6"],
+        Stroke  = new Stroke { Curve = Curve.Smooth, Width = 2 },
+        Markers = new Markers { Size = 0, Hover = new MarkersHover { Size = 0, SizeOffset = 0 } },
+        Xaxis  = new XAxis
+        {
+            Type       = XAxisType.Numeric,
+            TickAmount = 10,
+            Labels     = new XAxisLabels
+            {
+                Formatter = "function(val) { return Math.round(val * 100) + '%'; }",
+            },
+        },
+        Yaxis  = [new YAxis
+        {
+            Title  = new AxisTitle { Text = "Δ (s)" },
+            Labels = new YAxisLabels
+            {
+                Formatter = "function(val) { return val.toFixed(2); }",
+            },
+        }],
+        Annotations = new Annotations
+        {
+            Yaxis =
+            [
+                new AnnotationsYAxis
+                {
+                    Y               = 0m,
+                    BorderColor     = "#7C83B0",
+                    BorderWidth     = 1,
+                    StrokeDashArray = 4,
+                    Label = new Label
+                    {
+                        Text  = "even",
+                        Style = new Style { Color = "#7C83B0" },
+                    },
+                },
+            ],
+        },
+        Grid   = new Grid { BorderColor = "#262B55" },
+        Legend = new Legend { Show = false },
+        Tooltip = new Tooltip
+        {
+            Intersect = false,
+            X = new TooltipX { Formatter = "function(val) { return (val * 100).toFixed(1) + '%'; }" },
+        },
+    };
+}

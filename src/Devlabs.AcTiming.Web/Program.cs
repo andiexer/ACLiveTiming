@@ -1,3 +1,4 @@
+using ApexCharts;
 using Devlabs.AcTiming.Application;
 using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddApexCharts();
 
 builder.Services.AddSignalR();
 

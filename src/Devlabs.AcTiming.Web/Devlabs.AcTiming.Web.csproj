@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Devlabs.AcTiming.Infrastructure\Devlabs.AcTiming.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Blazor-ApexCharts" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
