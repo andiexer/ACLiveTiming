@@ -1,5 +1,8 @@
+using Devlabs.AcTiming.Application.Abstractions;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
+using Devlabs.AcTiming.Domain.Shared;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -54,8 +57,14 @@ public sealed class PitStatusEnricher(
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var repo = scope.ServiceProvider.GetRequiredService<ITrackConfigRepository>();
-            var config = await repo.FindByTrackAsync(s.TrackName, s.TrackConfig, ct);
+            var timingDb = scope.ServiceProvider.GetRequiredService<ITimingDb>();
+            var config = await timingDb
+                .AsNoTracking<TrackConfig>()
+                .Include(x => x.Track)
+                .FirstOrDefaultAsync(
+                    c => c.Track.Name == s.TrackName && c.Track.Config == s.TrackConfig,
+                    ct
+                );
 
             if (config?.PitLane is { } pitLane)
             {

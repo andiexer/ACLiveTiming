@@ -1,4 +1,6 @@
-namespace Devlabs.AcTiming.Domain.Shared;
+using Devlabs.AcTiming.Domain.Shared;
+
+namespace Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 
 /// <summary>
 /// Pit lane defined as a centre-line polyline plus a half-width.

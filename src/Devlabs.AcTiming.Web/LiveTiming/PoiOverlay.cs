@@ -1,3 +1,4 @@
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 using Devlabs.AcTiming.Domain.Shared;
 
 namespace Devlabs.AcTiming.Web.LiveTiming;

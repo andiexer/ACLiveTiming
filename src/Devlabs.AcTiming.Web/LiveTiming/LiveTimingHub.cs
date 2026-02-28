@@ -10,5 +10,4 @@ public class LiveTimingHub : Hub
 public static class LiveTimingHubMethods
 {
     public const string StateSnapshot = "StateSnapshot";
-    public const string CollisionOccurred = "CollisionOccurred"; // TODO: move into StateSnapshot events feed
 }

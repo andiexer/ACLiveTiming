@@ -1,8 +1,7 @@
 namespace Devlabs.AcTiming.Domain.Shared;
 
-public class Track
+public class Track : Entity
 {
-    public int Id { get; set; }
     public required string Name { get; set; }
     public string? Config { get; set; }
 

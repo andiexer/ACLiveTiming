@@ -1,0 +1,763 @@
+/* ── Page frame ─────────────────────────────────────────────────────────── */
+.timing-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Session header (unified bar + stats) ───────────────────────────────── */
+.session-header {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Session bar ────────────────────────────────────────────────────────── */
+.session-bar {
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+}
+
+.session-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.72rem;
+    overflow: hidden;
+}
+
+.session-type-badge {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.08rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+
+.session-track {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.session-server,
+.session-temps {
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.session-separator {
+    color: var(--border);
+    user-select: none;
+}
+
+.session-waiting {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.session-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding-left: 0.9rem;
+    border-left: 1px solid var(--border);
+    height: 100%;
+}
+
+.session-timer {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.04em;
+}
+
+.connection-dot {
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.connection-dot.connected {
+    color: var(--success);
+}
+
+.connection-dot.disconnected {
+    color: var(--danger);
+}
+
+/* ── Stats row (inline, inside session-header) ──────────────────────────── */
+.sh-stats {
+    height: 22px;
+    display: flex;
+    align-items: stretch;
+    background: var(--bg-surface);
+}
+
+.sh-stat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.5rem;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.sh-stat:last-child {
+    border-right: none;
+}
+
+.sh-stat-label {
+    font-size: 0.56rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.sh-stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.sh-stat-value.stat-purple { color: #a855f7; }
+.sh-stat-value.stat-danger  { color: var(--danger); }
+
+.sh-stat-sub {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Two-column grid ────────────────────────────────────────────────────── */
+.timing-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0.625rem;
+    padding: 0.625rem;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.left-col,
+.right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* ── Base panel ─────────────────────────────────────────────────────────── */
+.panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.panel-header {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-table-header);
+    flex-shrink: 0;
+}
+
+.panel-divider {
+    height: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+.panel-empty {
+    display: block;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* ── Map panel ──────────────────────────────────────────────────────────── */
+.map-panel {
+    flex: 55;
+}
+
+.map-panel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.map-expand-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.map-expand-btn:hover {
+    color: var(--text-primary);
+}
+
+.map-body {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+}
+
+/* ── Map fullscreen overlay ─────────────────────────────────────────────── */
+.map-fullscreen-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-fullscreen-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 90vw;
+    height: 90vh;
+}
+
+.map-fullscreen-close {
+    position: absolute;
+    top: -2rem;
+    right: 0;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.15s;
+    z-index: 1;
+}
+
+.map-fullscreen-close:hover {
+    color: #fff;
+}
+
+/* ── Events panel ───────────────────────────────────────────────────────── */
+.events-panel {
+    flex: 45;
+}
+
+.events-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.event-item {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+}
+
+.event-item:hover {
+    background: var(--bg-hover);
+}
+
+.event-indicator {
+    width: 3px;
+    flex-shrink: 0;
+}
+
+.event-indicator.event-sessionstart,
+.event-indicator.event-sessionend,
+.event-indicator.event-disconnect { background: var(--text-muted); }
+.event-indicator.event-join       { background: var(--accent);     }
+.event-indicator.event-collision  { background: var(--danger);     }
+.event-indicator.event-pit        { background: var(--warning);    }
+.event-indicator.event-max-speed  { background: var(--best);       }
+
+.event-content {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.32rem 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.event-time {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.event-message {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Leaderboard panel ──────────────────────────────────────────────────── */
+.leaderboard-panel {
+    flex: 1;
+}
+
+.leaderboard-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+}
+
+/* ── Timing table ───────────────────────────────────────────────────────── */
+.timing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.timing-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.3rem 0.5rem;
+    text-align: left;
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.timing-table td {
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.timing-table .pos {
+    font-weight: 700;
+    width: 2.2rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.timing-table .driver-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Numbered position bubble — table rows and driver panel */
+.driver-pos-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 26px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    vertical-align: middle;
+    margin-right: 0.45rem;
+}
+
+/* Larger variant for the selected driver panel header */
+.driver-pos-bubble-lg {
+    width: 30px;
+    height: 40px;
+    font-size: 0.85rem;
+    margin-right: 0;
+    flex-shrink: 0;
+}
+
+.timing-table .car-name {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.timing-table .laptime {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lap-in-pit {
+    color: var(--danger)
+}
+
+.lap-in-outlap {
+    color: var(--warning);
+}
+
+.timing-table .gap {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.timing-table .sector-th {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.timing-table .sector-td {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    white-space: nowrap;
+}
+
+.timing-table .driver-row {
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.timing-table .driver-row:hover {
+    background: var(--bg-hover);
+}
+
+.timing-table .driver-row.selected {
+    background: var(--bg-hover);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.timing-table .disconnected {
+    opacity: 0.4;
+}
+
+.car-id-th{
+    width: 20px;
+    border-left: 1px solid var(--border);
+}
+
+.car-id-col {
+    padding: 0;
+    color: white;
+    width: 20px;
+    vertical-align: middle;
+    border-left: 1px solid var(--border);
+}
+
+/* Pit — amber strip */
+.status-col.status-pit {
+    background: var(--warning);
+}
+
+/* Outlap — green strip (future) */
+.status-col.status-outlap {
+    background: var(--success);
+}
+
+.status-letter {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #111;
+    line-height: 1;
+    padding: 0.3rem 0;
+    text-align: center;
+}
+
+/* ── Gap / Interval toggle ──────────────────────────────────────────────── */
+.gap-toggle {
+    display: inline-flex;
+    background: var(--bg-app);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.gap-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.45rem;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+
+.gap-toggle-btn:hover {
+    color: var(--text-secondary);
+}
+
+.gap-toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* ── Selected driver panel ──────────────────────────────────────────────── */
+.driver-panel {
+    flex-shrink: 0;
+    border-left: 3px solid var(--accent) !important;
+}
+
+/* Driver identity row — stretch so pos block spans full height */
+.driver-panel-header {
+    display: flex;
+    align-items: stretch;
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+/* Position block: full-height left section with divider */
+.dph-pos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 0.9rem;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 0.08rem;
+}
+
+.dph-pos-number {
+    font-family: var(--font-mono);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.dph-pos-label {
+    font-size: 0.52rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+}
+
+.driver-panel-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.75rem;
+}
+
+.driver-panel-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.driver-panel-meta-item {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.status-ontrack {
+    color: var(--success);
+}
+
+.status-inpit {
+    color: var(--warning);
+}
+
+/* Brand badge — right side of the header, separated by a left border */
+.driver-panel-brand-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.8rem;
+    border-left: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    line-height: 1;
+    flex-shrink: 0;
+    align-self: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, .08);
+}
+
+/* ── Sections (telemetry + historical) ──────────────────────────────────── */
+.dp-section {
+    flex-shrink: 0;
+}
+
+.dp-section-telemetry {
+    background: var(--bg-hover);
+}
+
+.dp-section-history {
+    background: var(--bg-surface);
+}
+
+.dp-section-header {
+    padding: 0.32rem 0.9rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Live telemetry: one-row grid ───────────────────────────────────────── */
+.dp-telem-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+}
+
+.dp-telem-cell {
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-right: 1px solid var(--border);
+}
+
+.dp-telem-cell:last-child {
+    border-right: none;
+}
+
+.dp-telem-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
+
+.dp-telem-value {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.dp-telem-unit {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.dp-telem-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+/* RPM cell: bar sits above the value */
+.dp-telem-rpm .rpm-bar {
+    height: 7px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.15rem;
+}
+
+.dp-telem-rpm .rpm-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.15s ease;
+}
+
+/* ── Historical stats rows ──────────────────────────────────────────────── */
+.dp-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.32rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.dp-stat-row.last {
+    border-bottom: none;
+}
+
+.dp-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.dp-stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dp-stat-value.placeholder {
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-weight: normal;
+}
