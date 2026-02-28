@@ -1,5 +1,8 @@
+using Devlabs.AcTiming.Application.Abstractions;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
+using Devlabs.AcTiming.Domain.Shared;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -57,13 +60,14 @@ public sealed class SpeedTrapEnricher(
     private async Task HandleSessionInfoAsync(SimEventSessionInfoReceived ev, CancellationToken ct)
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
-        var trackConfigRepository =
-            scope.ServiceProvider.GetRequiredService<ITrackConfigRepository>();
-        var trackConfig = await trackConfigRepository.FindByTrackAsync(
-            ev.TrackName,
-            ev.TrackConfig,
-            ct
-        );
+        var timingDb = scope.ServiceProvider.GetRequiredService<ITimingDb>();
+        var trackConfig = await timingDb
+            .AsNoTracking<TrackConfig>()
+            .Include(x => x.Track)
+            .FirstOrDefaultAsync(
+                c => c.Track.Name == ev.TrackName && c.Track.Config == ev.TrackConfig,
+                ct
+            );
 
         if (trackConfig is null)
         {

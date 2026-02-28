@@ -1,3 +1,4 @@
+using Devlabs.AcTiming.Application.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

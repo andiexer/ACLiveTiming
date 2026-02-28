@@ -1,15 +1,16 @@
 @page "/track-config"
-@using Devlabs.AcTiming.Application.Shared
+@using Devlabs.AcTiming.Application.Abstractions
+@using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Domain.Shared
 @using Devlabs.AcTiming.Web.LiveTiming
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
 @using Track = Devlabs.AcTiming.Domain.Shared.Track
 @implements IAsyncDisposable
-@inject ITrackConfigRepository ConfigRepo
-@inject TrackMapService MapService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Nav
+@inject ITimingDb TimingDb
 
 <PageTitle>Track Config – AC Timing</PageTitle>
 
@@ -290,7 +291,6 @@
     private TrackOption? SelectedTrack =>
         _tracks.FirstOrDefault(t => TrackKey(t) == _selectedTrackKey);
 
-    // ── Load / Save ───────────────────────────────────────────────────────
 
     private async Task LoadConfigAsync()
     {
@@ -298,7 +298,7 @@
         if (track is null) return;
 
         _statusMsg = "";
-        _currentConfig = await ConfigRepo.FindByTrackAsync(track.Name, track.Config);
+        _currentConfig = await TimingDb.AsNoTracking<TrackConfig>().Include(x => x.Track).FirstOrDefaultAsync(x => x.Track.Name == track.Name && x.Track.Config == track.Config);
         _pitCenterLine = _currentConfig?.PitLane?.CenterLine.ToList() ?? [];
         _pitHalfWidth  = _currentConfig?.PitLane?.HalfWidthMeters ?? 8f;
         _speedTraps    = _currentConfig?.SpeedTraps.ToList() ?? [];
@@ -320,15 +320,16 @@
         _statusMsg = "";
         try
         {
-            if (_currentConfig is null)
+            var trackConfig = await TimingDb.AsTracking<TrackConfig>().FirstOrDefaultAsync(x => x.Track.Name == track.Name && x.Track.Config == track.Config);
+            if (trackConfig is null)
             {
-                _currentConfig = new TrackConfig
+                trackConfig = new TrackConfig
                 {
                     Track = new Track { Name = track.Name, Config = track.Config },
                 };
             }
 
-            _currentConfig.PitLane = _pitCenterLine.Count >= 2
+            trackConfig.PitLane = _pitCenterLine.Count >= 2
                 ? new PitLaneDefinition
                 {
                     CenterLine      = [.. _pitCenterLine],
@@ -336,9 +337,10 @@
                 }
                 : null;
 
-            _currentConfig.SpeedTraps = [.. _speedTraps];
+            trackConfig.SpeedTraps = [.. _speedTraps];
 
-            await ConfigRepo.SaveAsync(_currentConfig);
+            await TimingDb.SaveChangesAsync();
+            _currentConfig = trackConfig;
             _statusMsg   = "Saved";
             _statusError = false;
         }

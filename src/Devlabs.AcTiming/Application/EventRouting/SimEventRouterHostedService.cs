@@ -1,3 +1,4 @@
+using Devlabs.AcTiming.Application.Abstractions;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.Hosting;

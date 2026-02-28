@@ -1,6 +1,6 @@
-using Devlabs.AcTiming.Domain.LiveTiming;
+using Devlabs.AcTiming.Application.Shared;
 
-namespace Devlabs.AcTiming.Application.Shared;
+namespace Devlabs.AcTiming.Application.Abstractions;
 
 public interface ISimEventSource
 {

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using Devlabs.AcTiming.Application.Abstractions;
 using Devlabs.AcTiming.Application.Shared;
 using Devlabs.AcTiming.Domain.Shared;
 using Microsoft.Extensions.Hosting;
