@@ -1,10 +1,12 @@
 using System.Threading.Channels;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline;
+using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.LapTelemetry;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SectorTiming;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.SpeedTrap;
 using Devlabs.AcTiming.Application.EventRouting.Pipeline.Sink;
 using Devlabs.AcTiming.Application.LiveTiming;
+using Devlabs.AcTiming.Application.Persistence;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,6 +46,7 @@ public static class DependencyInjection
         services.AddSingleton<SectorTimingTracker>();
         services.AddSingleton<PitStatusTracker>();
         services.AddSingleton<SpeedTrapTracker>();
+        services.AddSingleton<LapTelemetryTracker>();
 
         // routing
         services.AddSimEventPipeline(config =>
@@ -51,10 +54,12 @@ public static class DependencyInjection
             config.AddEnricher<SectorTimingEnricher>();
             config.AddEnricher<PitStatusEnricher>();
             config.AddEnricher<SpeedTrapEnricher>();
+            config.AddEnricher<LapTelemetryEnricher>();
 
             config.AddSink<ChannelSink>();
         });
 
         services.AddHostedService<RealTimeProcessor>();
+        services.AddHostedService<PersistenceProcessor>();
     }
 }

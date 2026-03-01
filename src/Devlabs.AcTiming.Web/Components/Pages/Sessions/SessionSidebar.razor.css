@@ -1,0 +1,101 @@
+/* ── Sidebar shell ──────────────────────────────────────────────────────── */
+.ssb-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-surface);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.ssb-header {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-table-header);
+    flex-shrink: 0;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.ssb-empty {
+    display: block;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-style: italic;
+}
+
+/* ── Session items ──────────────────────────────────────────────────────── */
+.ssb-item {
+    cursor: pointer;
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    border-left: 3px solid transparent;
+    transition: background 0.1s;
+}
+
+.ssb-item:hover {
+    background: var(--bg-hover);
+}
+
+.ssb-item.selected {
+    background: var(--bg-hover);
+    border-left-color: var(--accent);
+}
+
+.ssb-item-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+}
+
+/* ── Type badge ─────────────────────────────────────────────────────────── */
+.ssb-badge {
+    padding: 0.07rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+}
+
+.ssb-badge-practice   { background: #3b82f6; }
+.ssb-badge-qualifying { background: #f59e0b; }
+.ssb-badge-race       { background: var(--accent); }
+
+/* ── Status dot ─────────────────────────────────────────────────────────── */
+.ssb-status-dot {
+    font-size: 0.55rem;
+    line-height: 1;
+    margin-left: auto;
+}
+
+.ssb-status-dot.open   { color: var(--success); }
+.ssb-status-dot.closed { color: var(--border); }
+
+/* ── Track name ─────────────────────────────────────────────────────────── */
+.ssb-track {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Date ───────────────────────────────────────────────────────────────── */
+.ssb-date {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-top: 0.1rem;
+}

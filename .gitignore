@@ -3,6 +3,9 @@
 [Oo]bj/
 **/[Bb]in/
 **/[Oo]bj/
+# malformed Windows-style paths (backslash in name on macOS/Linux)
+**/bin\Debug/
+**/bin\Release/
 *.user
 *.suo
 *.cache

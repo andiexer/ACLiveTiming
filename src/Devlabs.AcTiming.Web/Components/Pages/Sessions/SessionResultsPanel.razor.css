@@ -1,0 +1,128 @@
+/* ── Panel shell ────────────────────────────────────────────────────────── */
+.srp-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Placeholder (no session selected) ─────────────────────────────────── */
+.srp-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.6rem;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.srp-placeholder-icon {
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.srp-placeholder-text {
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* ── Header bar ─────────────────────────────────────────────────────────── */
+.srp-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 1rem;
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.srp-type-badge {
+    padding: 0.08rem 0.45rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.srp-badge-practice   { background: #3b82f6; }
+.srp-badge-qualifying { background: #f59e0b; }
+.srp-badge-race       { background: var(--accent); }
+
+.srp-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.srp-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.srp-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+}
+
+.srp-status {
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.srp-status.open   { color: var(--success); }
+.srp-status.closed { color: var(--text-muted); }
+
+/* ── State messages (loading / empty) ───────────────────────────────────── */
+.srp-state-msg {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+/* ── Scroll wrapper + table ─────────────────────────────────────────────── */
+.srp-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+}
+
+.srp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.srp-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0.3rem 0.55rem;
+    text-align: left;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--bg-table-header);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.srp-th-chevron { width: 1.6rem; }
+.srp-th-pos     { width: 2rem; }
+.srp-th-sector  { width: 6rem; }
+.srp-th-laps    { width: 3.5rem; text-align: right; }

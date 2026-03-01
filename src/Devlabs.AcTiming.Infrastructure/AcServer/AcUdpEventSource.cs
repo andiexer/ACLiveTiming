@@ -155,8 +155,11 @@ public sealed class AcUdpEventSource(
         switch (packetType)
         {
             case AcProtocol.NewSession:
+                HandleSessionInfo(data, isNewSession: true);
+                break;
+
             case AcProtocol.SessionInfo:
-                HandleSessionInfo(data);
+                HandleSessionInfo(data, isNewSession: false);
                 break;
 
             case AcProtocol.EndSession:
@@ -197,7 +200,7 @@ public sealed class AcUdpEventSource(
         }
     }
 
-    private void HandleSessionInfo(byte[] data)
+    private void HandleSessionInfo(byte[] data, bool isNewSession)
     {
         var info = AcPacketParser.ParseSessionInfo(data);
         var session = new SimEventSessionInfoReceived(
@@ -209,7 +212,8 @@ public sealed class AcUdpEventSource(
             info.Laps,
             info.ElapsedMs,
             info.AmbientTemp,
-            info.RoadTemp
+            info.RoadTemp,
+            isNewSession
         );
         _events.Writer.TryWrite(session);
     }
@@ -252,7 +256,7 @@ public sealed class AcUdpEventSource(
             info.CarModel,
             info.CarSkin,
             info.DriverName,
-            info.CarModel
+            info.DriverGuid
         );
 
         _events.Writer.TryWrite(entry);

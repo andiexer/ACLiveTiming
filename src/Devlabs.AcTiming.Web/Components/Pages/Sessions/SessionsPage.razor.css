@@ -1,0 +1,15 @@
+/* ── Page frame ─────────────────────────────────────────────────────────── */
+.sp-page {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Right content area ─────────────────────────────────────────────────── */
+.sp-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}

@@ -1,0 +1,136 @@
+@using Devlabs.AcTiming.Domain.Shared
+
+<!-- ── Summary row ──────────────────────────────────────────────────────── -->
+<tr class="dr-row @(_expanded ? "dr-row-open" : "")" @onclick="Toggle">
+    <td class="dr-td-chevron">
+        <span class="dr-chevron @(_expanded ? "open" : "")">›</span>
+    </td>
+    <td class="dr-td-pos">@Position</td>
+    <td class="dr-td-driver">@_first.Driver.Name</td>
+    <td class="dr-td-car">@_first.Car.Model</td>
+    <td class="dr-td-time">@FormatTime(_bestLap?.LapTimeMs)</td>
+    <td class="dr-td-sector">@FormatTime(_bestS1)</td>
+    <td class="dr-td-sector">@FormatTime(_bestS2)</td>
+    <td class="dr-td-sector">@FormatTime(_bestS3)</td>
+    <td class="dr-td-possible">@FormatTime(_possibleBest)</td>
+    <td class="dr-td-kph">@FormatKph(_maxKph)</td>
+    <td class="dr-td-cuts @(_totalCuts > 0 ? "dr-cuts-warn" : "")">
+        @(_totalCuts > 0 ? _totalCuts.ToString() : "")
+    </td>
+    <td class="dr-td-laps">@DriverLaps.Count</td>
+</tr>
+
+<!-- ── Expanded lap detail ──────────────────────────────────────────────── -->
+@if (_expanded)
+{
+    <tr class="dr-detail-tr">
+        <td colspan="12" class="dr-detail-td">
+            <div class="dr-detail-wrap">
+                <table class="dr-lap-table">
+                    <colgroup>
+                        <col class="dr-col-num">
+                        <col class="dr-col-time">
+                        <col class="dr-col-sector">
+                        <col class="dr-col-sector">
+                        <col class="dr-col-sector">
+                        <col class="dr-col-kph">
+                        <col class="dr-col-cuts">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Time</th>
+                        <th>S1</th>
+                        <th>S2</th>
+                        <th>S3</th>
+                        <th>Max km/h</th>
+                        <th title="Cuts">Cuts</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var lap in DriverLaps)
+                    {
+                        var isDriverBest = lap.IsValid && lap.LapTimeMs == _bestLap?.LapTimeMs;
+                        var isOverallBest = isDriverBest && lap.LapTimeMs == OverallBest;
+                        var lapClass = !lap.IsValid ? "lap-invalid"
+                            : isOverallBest ? "lap-purple"
+                            : isDriverBest ? "lap-green"
+                            : "";
+
+                        <tr class="dr-@lapClass">
+                            <td class="dr-lap-num">@lap.LapNumber</td>
+                            <td class="dr-lap-time">@FormatTime(lap.LapTimeMs)</td>
+                            <td class="dr-lap-sector">@FormatSector(lap.SectorTimesMs, 0)</td>
+                            <td class="dr-lap-sector">@FormatSector(lap.SectorTimesMs, 1)</td>
+                            <td class="dr-lap-sector">@FormatSector(lap.SectorTimesMs, 2)</td>
+                            <td class="dr-lap-kph">@FormatKph(lap.MaxSpeedKmh)</td>
+                            <td class="dr-lap-cuts @(lap.Cuts > 0 ? "dr-cuts-warn" : "")">
+                                @(lap.Cuts > 0 ? lap.Cuts.ToString() : "")
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </td>
+    </tr>
+}
+
+@code {
+
+    [Parameter, EditorRequired] public List<Lap> DriverLaps { get; set; } = [];
+    [Parameter] public int Position { get; set; }
+    [Parameter] public int? OverallBest { get; set; }
+
+    private bool _expanded;
+
+    // Computed summaries
+    private Lap _first = null!;
+    private Lap? _bestLap;
+    private int? _bestS1, _bestS2, _bestS3, _possibleBest;
+    private float _maxKph;
+    private int _totalCuts;
+
+    protected override void OnParametersSet()
+    {
+        _first   = DriverLaps[0];
+        _bestLap = DriverLaps.Where(l => l.IsValid).MinBy(l => l.LapTimeMs);
+        _bestS1  = BestSector(0);
+        _bestS2  = BestSector(1);
+        _bestS3  = BestSector(2);
+        _possibleBest = _bestS1.HasValue && _bestS2.HasValue && _bestS3.HasValue
+            ? _bestS1 + _bestS2 + _bestS3 : null;
+        _maxKph     = DriverLaps.Max(l => l.MaxSpeedKmh);
+        _totalCuts  = DriverLaps.Sum(l => l.Cuts);
+    }
+
+    private int? BestSector(int index) =>
+        DriverLaps
+            .Where(l => l.SectorTimesMs.Count > index && l.SectorTimesMs[index] > 0)
+            .Select(l => (int?)l.SectorTimesMs[index])
+            .Min();
+
+    private void Toggle() => _expanded = !_expanded;
+
+    // ── Formatting ────────────────────────────────────────────────────────
+
+    private static string FormatTime(int? ms)
+    {
+        if (ms is null or <= 0) return "—";
+        var ts = TimeSpan.FromMilliseconds(ms.Value);
+        return ts.Minutes > 0
+            ? $"{ts.Minutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}"
+            : $"{ts.Seconds}.{ts.Milliseconds:D3}";
+    }
+
+    private static string FormatSector(List<int> sectors, int index)
+    {
+        if (sectors.Count <= index || sectors[index] <= 0) return "—";
+        var ts = TimeSpan.FromMilliseconds(sectors[index]);
+        return ts.Minutes > 0
+            ? $"{ts.Minutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}"
+            : $"{ts.Seconds}.{ts.Milliseconds:D3}";
+    }
+
+    private static string FormatKph(float kph) => kph > 0 ? $"{kph:F0}" : "—";
+}

@@ -1,0 +1,49 @@
+@page "/sessions"
+@using Devlabs.AcTiming.Application.Abstractions
+@using Devlabs.AcTiming.Domain.Shared
+@using Microsoft.EntityFrameworkCore
+@inject ITimingDb TimingDb
+
+<PageTitle>Sessions - AC Timing</PageTitle>
+
+<div class="sp-page">
+    <SessionSidebar Sessions="_sessions" Selected="_selected" OnSelect="SelectSessionAsync" />
+    <div class="sp-content">
+        <SessionResultsPanel Session="_selected" Laps="_laps" Loading="_loading" />
+    </div>
+</div>
+
+@code {
+
+    private List<Session> _sessions = [];
+    private Session? _selected;
+    private List<Lap> _laps = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sessions = await TimingDb.AsNoTracking<Session>()
+            .Include(s => s.Track)
+            .OrderByDescending(s => s.StartedAtUtc)
+            .ToListAsync();
+    }
+
+    private async Task SelectSessionAsync(Session session)
+    {
+        if (_selected?.Id == session.Id) return;
+
+        _selected = session;
+        _loading = true;
+        _laps = [];
+        StateHasChanged();
+
+        _laps = await TimingDb.AsNoTracking<Lap>()
+            .Include(l => l.Driver)
+            .Include(l => l.Car)
+            .Where(l => l.SessionId == session.Id)
+            .OrderBy(l => l.LapNumber)
+            .ToListAsync();
+
+        _loading = false;
+    }
+}

@@ -1,0 +1,124 @@
+@using Devlabs.AcTiming.Domain.Shared
+
+@if (Session is null)
+{
+    <div class="srp-placeholder">
+        <div class="srp-placeholder-icon">⏱</div>
+        <div class="srp-placeholder-text">Select a session from the list</div>
+    </div>
+}
+else
+{
+    <div class="srp-panel">
+
+        <!-- ── Session header bar ──────────────────────────────────────────── -->
+        <div class="srp-header">
+            <span class="srp-type-badge srp-badge-@Session.Type.ToString().ToLowerInvariant()">
+                @Session.Type
+            </span>
+            <span class="srp-title">
+                @Session.Track.Name@(string.IsNullOrEmpty(Session.Track.Config) ? "" : $" · {Session.Track.Config}")
+            </span>
+            <span class="srp-meta">@Session.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            @if (!Session.IsOpen && Session.EndedAtUtc.HasValue)
+            {
+                var duration = Session.EndedAtUtc.Value - Session.StartedAtUtc;
+                <span class="srp-meta">@((int)duration.TotalMinutes) min</span>
+            }
+            <div class="srp-header-right">
+                @if (Laps.Count > 0)
+                {
+                    <span class="srp-meta">@Laps.Count lap@(Laps.Count == 1 ? "" : "s")</span>
+                    <span class="srp-meta">@(_ranked.Count) driver@(_ranked.Count == 1 ? "" : "s")</span>
+                }
+                <span class="srp-status @(Session.IsOpen ? "open" : "closed")">
+                    @(Session.IsOpen ? "● Live" : "● Closed")
+                </span>
+            </div>
+        </div>
+
+        <!-- ── Content ─────────────────────────────────────────────────────── -->
+        @if (Loading)
+        {
+            <div class="srp-state-msg">Loading…</div>
+        }
+        else if (Laps.Count == 0)
+        {
+            <div class="srp-state-msg">No laps recorded for this session</div>
+        }
+        else
+        {
+            <div class="srp-scroll">
+                <table class="srp-table">
+                    <thead>
+                    <tr>
+                        <th class="srp-th-chevron"></th>
+                        <th class="srp-th-pos">Pos</th>
+                        <th>Driver</th>
+                        <th>Car</th>
+                        <th>Best Lap</th>
+                        <th class="srp-th-sector" title="Best sector 1 across all laps">S1</th>
+                        <th class="srp-th-sector" title="Best sector 2 across all laps">S2</th>
+                        <th class="srp-th-sector" title="Best sector 3 across all laps">S3</th>
+                        <th title="Theoretical best (sum of best individual sectors)">Theoretical Best</th>
+                        <th>Max km/h</th>
+                        <th title="Total track-limit cuts">Cuts</th>
+                        <th class="srp-th-laps">Laps</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < _ranked.Count; i++)
+                    {
+                        var driverLaps = _ranked[i];
+                        <DriverRow DriverLaps="driverLaps" Position="@(i + 1)" OverallBest="_overallBest" />
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+
+    [Parameter] public Session? Session { get; set; }
+    [Parameter] public List<Lap> Laps { get; set; } = [];
+    [Parameter] public bool Loading { get; set; }
+
+    private List<List<Lap>> _ranked = [];
+    private int? _overallBest;
+
+    protected override void OnParametersSet()
+    {
+        if (Laps.Count == 0)
+        {
+            _ranked = [];
+            _overallBest = null;
+            return;
+        }
+
+        _ranked = Session?.Type == SessionType.Race
+            ? RankedByRace()
+            : RankedByBestLap();
+
+        _overallBest = Laps
+            .Where(l => l.IsValid)
+            .Select(l => (int?)l.LapTimeMs)
+            .Min();
+    }
+
+    // Practice / Qualifying: sorted by best valid lap time
+    private List<List<Lap>> RankedByBestLap() =>
+        Laps.GroupBy(l => l.DriverId)
+            .OrderBy(g => g.Where(l => l.IsValid).MinBy(l => l.LapTimeMs)?.LapTimeMs ?? int.MaxValue)
+            .Select(g => g.OrderBy(l => l.LapNumber).ToList())
+            .ToList();
+
+    // Race: most laps first, then lowest cumulative time (crossed line first)
+    private List<List<Lap>> RankedByRace() =>
+        Laps.GroupBy(l => l.DriverId)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Sum(l => (long)l.LapTimeMs))
+            .Select(g => g.OrderBy(l => l.LapNumber).ToList())
+            .ToList();
+}

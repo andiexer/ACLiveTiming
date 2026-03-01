@@ -1,8 +1,7 @@
 namespace Devlabs.AcTiming.Domain.Shared;
 
-public class Driver
+public class Driver : Entity
 {
-    public int Id { get; set; }
     public required string Guid { get; set; }
     public required string Name { get; set; }
     public string? Team { get; set; }

@@ -60,7 +60,7 @@ await Send(
         .WriteString("csp/7/00/:/asdf/simulator") // sending track identifieres like content manager will do
         .WriteString("") // track config
         .WriteString("Practice")
-        .WriteByte(1) // type: Practice
+        .WriteByte(2) // type: Practice
         .WriteUInt16(1800) // session time (s)
         .WriteUInt16(0) // laps (0 = timed)
         .WriteUInt16(60) // wait time

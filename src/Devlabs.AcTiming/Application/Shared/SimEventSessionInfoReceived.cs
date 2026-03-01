@@ -11,5 +11,6 @@ public record SimEventSessionInfoReceived(
     int Laps,
     int ElapsedMs,
     float AmbientTemp,
-    float RoadTemp
+    float RoadTemp,
+    bool IsNewSession
 ) : SimEvent;

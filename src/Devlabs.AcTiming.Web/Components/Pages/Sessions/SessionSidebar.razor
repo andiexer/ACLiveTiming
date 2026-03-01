@@ -1,0 +1,45 @@
+@using Devlabs.AcTiming.Domain.Shared
+
+<div class="ssb-sidebar">
+    <div class="ssb-header">Sessions</div>
+
+    @if (Sessions.Count == 0)
+    {
+        <span class="ssb-empty">No sessions yet</span>
+    }
+    else
+    {
+        @foreach (var session in Sessions)
+        {
+            <div class="ssb-item @(Selected?.Id == session.Id ? "selected" : "")"
+                 @onclick="() => OnSelect.InvokeAsync(session)">
+                <div class="ssb-item-top">
+                    <span class="ssb-badge ssb-badge-@session.Type.ToString().ToLowerInvariant()">
+                        @TypeLabel(session.Type)
+                    </span>
+                    <span class="ssb-status-dot @(session.IsOpen ? "open" : "closed")"
+                          title="@(session.IsOpen ? "In progress" : "Closed")">●</span>
+                </div>
+                <div class="ssb-track">
+                    @session.Track.Name@(string.IsNullOrEmpty(session.Track.Config) ? "" : $" · {session.Track.Config}")
+                </div>
+                <div class="ssb-date">@session.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+
+    [Parameter, EditorRequired] public List<Session> Sessions { get; set; } = [];
+    [Parameter] public Session? Selected { get; set; }
+    [Parameter] public EventCallback<Session> OnSelect { get; set; }
+
+    private static string TypeLabel(SessionType t) => t switch
+    {
+        SessionType.Practice   => "P",
+        SessionType.Qualifying => "Q",
+        SessionType.Race       => "R",
+        _                      => t.ToString()[..1]
+    };
+}

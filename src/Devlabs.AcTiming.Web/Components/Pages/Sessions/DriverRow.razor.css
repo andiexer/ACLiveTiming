@@ -1,0 +1,218 @@
+/* ── Summary row ────────────────────────────────────────────────────────── */
+.dr-row {
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.dr-row:hover {
+    background: var(--bg-hover);
+}
+
+.dr-row-open {
+    background: var(--bg-hover);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* All cells in the summary row */
+.dr-row td {
+    padding: 0.35rem 0.55rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+/* ── Chevron column ─────────────────────────────────────────────────────── */
+.dr-td-chevron {
+    width: 1.6rem;
+    text-align: center;
+    padding-left: 0.4rem !important;
+    padding-right: 0.2rem !important;
+}
+
+.dr-chevron {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1;
+    transition: transform 0.18s ease;
+    user-select: none;
+}
+
+.dr-chevron.open {
+    transform: rotate(90deg);
+    color: var(--accent);
+}
+
+/* ── Data columns ───────────────────────────────────────────────────────── */
+.dr-td-pos {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-muted);
+    width: 2rem;
+}
+
+.dr-td-driver {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 10rem;
+}
+
+.dr-td-car {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    max-width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dr-td-time,
+.dr-td-possible {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dr-td-sector {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.dr-td-kph {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+.dr-td-cuts {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    text-align: left;
+}
+
+.dr-td-laps {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.dr-cuts-warn {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+/* ── Expanded detail row ────────────────────────────────────────────────── */
+.dr-detail-tr {
+    background: var(--bg-app);
+}
+
+.dr-detail-td {
+    padding: 0 !important;
+    border-bottom: 2px solid var(--border) !important;
+}
+
+.dr-detail-wrap {
+    padding: 0.5rem 0.5rem 0.5rem 3rem;
+    overflow-x: auto;
+}
+
+/* ── Inner lap table ────────────────────────────────────────────────────── */
+.dr-lap-table {
+    width: 100%;
+    table-layout: fixed;        /* lock column widths — consistent across all expanded rows */
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+/* Fixed column widths (applied via <col> elements) */
+.dr-col-num    { width: 3rem; }
+.dr-col-time   { width: 9rem; }
+.dr-col-sector { width: 7rem; }
+.dr-col-kph    { width: 7rem; }
+.dr-col-cuts   { width: 4rem; }
+
+.dr-lap-table thead th {
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.dr-lap-table tbody tr {
+    transition: background 0.1s;
+}
+
+.dr-lap-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.dr-lap-best {
+    background: rgba(74, 222, 128, 0.06);
+}
+
+.dr-lap-table td {
+    padding: 0.28rem 0.5rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    white-space: nowrap;
+}
+
+.dr-lap-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.dr-lap-invalid {
+    color: var(--text-primary) !important;
+    background: rgba(239, 68, 68, .18);
+}
+
+.dr-lap-green {
+    color: var(--text-primary) !important;
+    background: rgba(74, 222, 128, 0.06);
+}
+
+.dr-lap-purple {
+    color: var(--text-primary) !important;
+    background: rgba(168, 85, 247, 0.12);
+}
+
+.dr-lap-num {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    width: 2rem;
+    text-align: left;
+}
+
+.dr-lap-time {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dr-lap-sector {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+}
+
+.dr-lap-kph {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+.dr-lap-cuts {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    text-align: left;
+}
+
+.dr-valid-yes { color: var(--success); text-align: center; }
+.dr-valid-no  { color: var(--danger); opacity: 0.55; text-align: center; }
