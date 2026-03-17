@@ -70,6 +70,10 @@ If the timing app runs on the same machine as AC, use `127.0.0.1`.
 
 See [docs/configuration.md](docs/configuration.md) for the full reference including cross-machine setups, firewall ports, and logging options.
 
+### Architecture
+
+See [docs/architecture.md](docs/architecture.md) for a full system design walkthrough — event pipeline, enrichers, SignalR broadcast, persistence, and how to extend the system.
+
 ---
 
 ## Development simulator
@@ -119,6 +123,7 @@ src/
 tests/
 └── Devlabs.AcTiming.Tests
 docs/
+├── architecture.md               # System design, event pipeline, enrichers
 ├── configuration.md              # Full config & deployment guide
 └── ac-protocol.md                # AC UDP packet reference
 ```
