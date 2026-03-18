@@ -320,13 +320,14 @@
         _statusMsg = "";
         try
         {
-            var trackConfig = await TimingDb.AsTracking<TrackConfig>().FirstOrDefaultAsync(x => x.Track.Name == track.Name && x.Track.Config == track.Config);
+            var trackConfig = await TimingDb.AsTracking<TrackConfig>().Include(x => x.Track).FirstOrDefaultAsync(x => x.Track.Name == track.Name && x.Track.Config == track.Config);
             if (trackConfig is null)
             {
                 trackConfig = new TrackConfig
                 {
                     Track = new Track { Name = track.Name, Config = track.Config },
                 };
+                TimingDb.Insert(trackConfig);
             }
 
             trackConfig.PitLane = _pitCenterLine.Count >= 2
