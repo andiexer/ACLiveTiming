@@ -475,6 +475,9 @@
     // ── Initialization ────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
+        if (!RendererInfo.IsInteractive)
+            return;
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(LiveTimingHub.HubUrl))
             .WithAutomaticReconnect()
