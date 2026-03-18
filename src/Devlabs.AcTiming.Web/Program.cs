@@ -4,6 +4,7 @@ using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
 using Devlabs.AcTiming.Web.Components;
 using Devlabs.AcTiming.Web.LiveTiming;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +21,13 @@ builder.Services.AddHostedService<LiveTimingSnapshotBroadcaster>();
 builder.Services.AddSingleton<TrackMapService>();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(
+    new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    }
+);
 
 if (!app.Environment.IsDevelopment())
 {
