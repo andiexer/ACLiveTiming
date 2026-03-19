@@ -1,0 +1,154 @@
+@page
+@model Devlabs.AcTiming.Web.Pages.LoginModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login – AC Timing</title>
+    <link rel="stylesheet" href="~/app.css" asp-append-version="true" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-app);
+            padding: 1.5rem;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .login-logo {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 0 18px rgba(59, 130, 246, 0.35));
+        }
+
+        .login-heading {
+            text-align: center;
+        }
+
+        .login-heading h1 {
+            margin: 0 0 0.25rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .login-heading p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            letter-spacing: 0.03em;
+        }
+
+        .login-form {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .login-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            font-family: var(--font-sans);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .login-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .login-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+        }
+
+        .login-error {
+            font-size: 0.82rem;
+            color: var(--danger);
+            text-align: center;
+            padding: 0.4rem 0;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-family: var(--font-sans);
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .login-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .login-btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+
+            <img src="~/ac_timing_logo.png" alt="AC Timing logo" class="login-logo" />
+
+            <div class="login-heading">
+                <p>Enter your password to continue</p>
+            </div>
+
+            <form method="post" class="login-form">
+                @Html.AntiForgeryToken()
+                <input asp-for="@Request.Query["returnUrl"]" type="hidden" name="returnUrl" value="@Request.Query["returnUrl"]" />
+
+                <input type="password"
+                       name="password"
+                       class="login-input @(Model.Error ? "login-input-error" : "")"
+                       placeholder="Password"
+                       autofocus
+                       autocomplete="current-password" />
+
+                @if (Model.Error)
+                {
+                    <div class="login-error">Incorrect password</div>
+                }
+
+                <button type="submit" class="login-btn">Sign In</button>
+            </form>
+
+        </div>
+    </div>
+</body>
+</html>
