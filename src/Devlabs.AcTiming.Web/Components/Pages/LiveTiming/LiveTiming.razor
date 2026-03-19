@@ -2,13 +2,14 @@
 @attribute [Authorize]
 @using Devlabs.AcTiming.Application.Abstractions
 @using Devlabs.AcTiming.Application.Cars
+@using Devlabs.AcTiming.Application.LiveTiming
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Web.LiveTiming
-@using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.EntityFrameworkCore
 @implements IAsyncDisposable
 @inject ICarBrandResolver CarBrandResolver
 @inject ITimingDb TimingDb
+@inject LiveTimingBroadcaster Broadcaster
 
 <PageTitle>Live Timing - AC Timing</PageTitle>
 
@@ -42,10 +43,7 @@
                         <span class="session-timer">@timer</span>
                     }
                 }
-                <span
-                    class="connection-dot @(_hubConnection?.State == HubConnectionState.Connected ? "connected" : "disconnected")">
-                    ●&nbsp;@(_hubConnection?.State == HubConnectionState.Connected ? "Connected" : "Disconnected")
-                </span>
+                <span class="connection-dot connected">● Live</span>
             </div>
         </div>
 
@@ -409,8 +407,7 @@
 
 @code {
 
-    // ── SignalR & session state ────────────────────────────────────────────
-    private HubConnection? _hubConnection;
+    // ── Session state ─────────────────────────────────────────────────────
     private SessionInfo? _session;
     private List<LiveDriver> _leaderboard = [];
     private List<SessionFeedEvent> _feedEvents = [];
@@ -474,42 +471,33 @@
     };
 
     // ── Initialization ────────────────────────────────────────────────────
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         if (!RendererInfo.IsInteractive)
-            return;
+            return Task.CompletedTask;
 
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(LiveTimingHub.HubUrl))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On<LiveTimingSnapshot>(LiveTimingHubMethods.StateSnapshot, snapshot =>
-        {
-            InvokeAsync(async () =>
-            {
-                _session = snapshot.Session;
-                _sessionStartedAt = _session is not null
-                    ? DateTime.UtcNow - TimeSpan.FromMilliseconds(_session.ElapsedMs)
-                    : null;
-                _leaderboard = snapshot.Leaderboard.ToList();
-                _feedEvents = snapshot.FeedEvents.ToList();
-
-                // Reload POI overlays whenever the track changes
-                var newKey = SessionTrackKey(_session);
-                if (newKey != _loadedTrackKey)
-                {
-                    _loadedTrackKey = newKey;
-                    await LoadPoiOverlaysAsync();
-                }
-
-                StateHasChanged();
-            });
-        });
-
-        await _hubConnection.StartAsync();
-
+        Broadcaster.Subscribe(HandleSnapshotAsync);
         StartTickTimer();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSnapshotAsync(LiveTimingSnapshot snapshot)
+    {
+        _session = snapshot.Session;
+        _sessionStartedAt = _session is not null
+            ? DateTime.UtcNow - TimeSpan.FromMilliseconds(_session.ElapsedMs)
+            : null;
+        _leaderboard = snapshot.Leaderboard.ToList();
+        _feedEvents = snapshot.FeedEvents.ToList();
+
+        var newKey = SessionTrackKey(_session);
+        if (newKey != _loadedTrackKey)
+        {
+            _loadedTrackKey = newKey;
+            await LoadPoiOverlaysAsync();
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void StartTickTimer()
@@ -527,8 +515,6 @@
                 await InvokeAsync(StateHasChanged);
         }
     }
-
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     // ── POI overlay loading ────────────────────────────────────────────────
 
@@ -699,13 +685,13 @@
         return "";
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
+        Broadcaster.Unsubscribe(HandleSnapshotAsync);
         _tickCts?.Cancel();
         _tickTimer?.Dispose();
         _tickCts?.Dispose();
-        if (_hubConnection is not null)
-            await _hubConnection.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 
 }

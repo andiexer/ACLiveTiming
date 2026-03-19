@@ -1,11 +1,10 @@
 using Devlabs.AcTiming.Application.LiveTiming;
-using Microsoft.AspNetCore.SignalR;
 
 namespace Devlabs.AcTiming.Web.LiveTiming;
 
 public sealed class LiveTimingSnapshotBroadcaster(
     ILiveTimingService liveTimingService,
-    IHubContext<LiveTimingHub> hubContext
+    LiveTimingBroadcaster broadcaster
 ) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -18,11 +17,7 @@ public sealed class LiveTimingSnapshotBroadcaster(
                 liveTimingService.GetLeaderboard(),
                 liveTimingService.GetFeedEvents()
             );
-            await hubContext.Clients.All.SendAsync(
-                LiveTimingHubMethods.StateSnapshot,
-                snapshot,
-                stoppingToken
-            );
+            await broadcaster.BroadcastAsync(snapshot);
         }
     }
 }
