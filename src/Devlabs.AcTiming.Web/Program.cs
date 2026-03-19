@@ -2,17 +2,34 @@ using ApexCharts;
 using Devlabs.AcTiming.Application;
 using Devlabs.AcTiming.Infrastructure;
 using Devlabs.AcTiming.Infrastructure.Persistence;
+using Devlabs.AcTiming.Web.Auth;
 using Devlabs.AcTiming.Web.Components;
 using Devlabs.AcTiming.Web.LiveTiming;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
 builder.Services.AddApexCharts();
 
 builder.Services.AddSignalR();
+
+builder.Services.AddSingleton<PasswordService>();
+builder
+    .Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o =>
+    {
+        o.LoginPath = "/login";
+        o.Cookie.Name = "actiming.auth";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.SlidingExpiration = true;
+        o.ExpireTimeSpan = TimeSpan.FromDays(1);
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddApplicationLayer();
 builder.Services.AddInfrastructureLayer(builder.Configuration);
@@ -35,10 +52,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapRazorPages();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+// Note: the SignalR hub is intentionally left open (no RequireAuthorization) because
+// hub connections from Blazor Server components run server-side and cannot carry the
+// browser's auth cookie. All app pages are protected via [Authorize] instead.
 app.MapHub<LiveTimingHub>(LiveTimingHub.HubUrl);
 
 // Apply any pending migrations on startup (creates DB on first run)

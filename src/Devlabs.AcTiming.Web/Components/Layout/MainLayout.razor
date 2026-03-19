@@ -9,6 +9,12 @@
             <NavLink class="nav-link" href="lap-comparison">Lap Compare</NavLink>
             <NavLink class="nav-link" href="track-config">Track Config</NavLink>
         </div>
+        <div class="nav-end">
+            <form method="post" action="/logout" class="logout-form">
+                <AntiforgeryToken />
+                <button type="submit" class="nav-link logout-btn" title="Sign out">Logout</button>
+            </form>
+        </div>
     </nav>
 
     <main class="content">

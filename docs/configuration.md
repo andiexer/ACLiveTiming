@@ -96,7 +96,11 @@ Edit `appsettings.json` before the first run. All settings have sensible default
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "Auth": {
+    "Password": "<some plaintext password>",
+    "PasswordHash": ""
+  }
 }
 ```
 
@@ -170,6 +174,14 @@ To debug UDP packet reception specifically, add this key under `LogLevel`:
 ```json
 "Devlabs.AcTiming.Infrastructure.AcServer.AcUdpClient": "Debug"
 ```
+
+### `Auth.Password` and `Auth.PasswordHash`
+Set a plaintext password here to enable authentication for the web UI. The hash is generated automatically on first run.
+You have to **manually** enter the password in the `PasswordHash` field if you want to use the hash. The `Password` field can be made emptyt after you set the hash, so the plaintext password won't be stored on disk.  
+
+The cookie-based auth has a sliding expiration of 1 day, so users won't have to log in again every time they open the page.
+
+> Disclaimer: This is only a basic auth mechanism to prevent unauthorized access to the timing page.  
 
 ---
 

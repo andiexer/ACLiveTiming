@@ -30,6 +30,24 @@
 .nav-links {
     display: flex;
     gap: 0.25rem;
+    flex: 1;
+}
+
+.nav-end {
+    margin-left: auto;
+}
+
+.logout-form {
+    margin: 0;
+    padding: 0;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-family: var(--font-sans);
 }
 
 ::deep .nav-link {
