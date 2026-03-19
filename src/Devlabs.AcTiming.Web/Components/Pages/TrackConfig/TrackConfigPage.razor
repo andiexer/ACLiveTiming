@@ -2,16 +2,16 @@
 @attribute [Authorize]
 @using Devlabs.AcTiming.Application.Abstractions
 @using Devlabs.AcTiming.Application.EventRouting.Pipeline.Enrichers.Pit
+@using Devlabs.AcTiming.Application.LiveTiming
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Domain.Shared
 @using Devlabs.AcTiming.Web.LiveTiming
-@using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.EntityFrameworkCore
 @using Track = Devlabs.AcTiming.Domain.Shared.Track
-@implements IAsyncDisposable
+@implements IDisposable
 @inject IWebHostEnvironment Env
-@inject NavigationManager Nav
 @inject ITimingDb TimingDb
+@inject LiveTimingBroadcaster Broadcaster
 
 <PageTitle>Track Config – AC Timing</PageTitle>
 
@@ -250,7 +250,6 @@
     private List<WorldPoint> _recordedPath = [];
     private bool _isRecording;
     private string _recordingCarIdStr = "";
-    private HubConnection? _hubConnection;
     private List<LiveDriver> _liveDrivers = [];
 
     private int? RecordingCarId =>
@@ -262,7 +261,12 @@
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
-    protected override void OnInitialized() => ScanTracks();
+    protected override void OnInitialized()
+    {
+        ScanTracks();
+        if (RendererInfo.IsInteractive)
+            Broadcaster.Subscribe(HandleSnapshotAsync);
+    }
 
     private void ScanTracks()
     {
@@ -371,12 +375,10 @@
         _trapP1     = null;
     }
 
-    private async Task SwitchToRecordPath()
+    private void SwitchToRecordPath()
     {
         _activeTool = Tool.RecordPath;
         _trapP1     = null;
-        if (_hubConnection is null)
-            await ConnectHubAsync();
     }
 
     // ── Map click ─────────────────────────────────────────────────────────
@@ -435,24 +437,14 @@
 
     // ── Record Path actions ───────────────────────────────────────────────
 
-    private async Task ConnectHubAsync()
+    private async Task HandleSnapshotAsync(LiveTimingSnapshot snapshot)
     {
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Nav.ToAbsoluteUri(LiveTimingHub.HubUrl))
-            .WithAutomaticReconnect()
-            .Build();
+        _liveDrivers = snapshot.Leaderboard.Where(d => d.IsConnected).ToList();
 
-        _hubConnection.On<LiveTimingSnapshot>(LiveTimingHubMethods.StateSnapshot, snapshot =>
-        {
-            _liveDrivers = snapshot.Leaderboard.Where(d => d.IsConnected).ToList();
+        if (_isRecording)
+            TryRecordPoint(snapshot);
 
-            if (_isRecording)
-                TryRecordPoint(snapshot);
-
-            InvokeAsync(StateHasChanged);
-        });
-
-        await _hubConnection.StartAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void TryRecordPoint(LiveTimingSnapshot snapshot)
@@ -529,9 +521,5 @@
 
     // ── Dispose ───────────────────────────────────────────────────────────
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_hubConnection is not null)
-            await _hubConnection.DisposeAsync();
-    }
+    public void Dispose() => Broadcaster.Unsubscribe(HandleSnapshotAsync);
 }

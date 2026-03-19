@@ -15,8 +15,6 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddRazorPages();
 builder.Services.AddApexCharts();
 
-builder.Services.AddSignalR();
-
 builder.Services.AddSingleton<PasswordService>();
 builder
     .Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -34,6 +32,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddApplicationLayer();
 builder.Services.AddInfrastructureLayer(builder.Configuration);
 
+builder.Services.AddSingleton<LiveTimingBroadcaster>();
 builder.Services.AddHostedService<LiveTimingSnapshotBroadcaster>();
 builder.Services.AddSingleton<TrackMapService>();
 
@@ -59,11 +58,6 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorPages();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
-
-// Note: the SignalR hub is intentionally left open (no RequireAuthorization) because
-// hub connections from Blazor Server components run server-side and cannot carry the
-// browser's auth cookie. All app pages are protected via [Authorize] instead.
-app.MapHub<LiveTimingHub>(LiveTimingHub.HubUrl);
 
 // Apply any pending migrations on startup (creates DB on first run)
 using (var scope = app.Services.CreateScope())
