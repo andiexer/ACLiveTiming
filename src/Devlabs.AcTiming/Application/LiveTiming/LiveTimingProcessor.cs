@@ -1,4 +1,5 @@
 using Devlabs.AcTiming.Application.Abstractions;
+using Devlabs.AcTiming.Application.Cars;
 using Devlabs.AcTiming.Application.Shared;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,8 @@ public sealed class RealTimeProcessor(
     ILogger<RealTimeProcessor> logger,
     RealtimeBus realtimeBus,
     ISimEventSource simEventSource,
-    ILiveTimingService liveTimingService
+    ILiveTimingService liveTimingService,
+    ICarCatalog carCatalog
 ) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -57,6 +59,7 @@ public sealed class RealTimeProcessor(
                             d.DriverName,
                             d.CarId
                         );
+                        await carCatalog.EnsureRegisteredAsync(d.CarModel);
                         liveTimingService.ApplyEvent(d);
                         break;
 

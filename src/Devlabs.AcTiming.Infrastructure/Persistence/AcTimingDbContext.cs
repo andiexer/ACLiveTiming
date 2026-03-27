@@ -7,6 +7,7 @@ public class AcTimingDbContext(DbContextOptions<AcTimingDbContext> options) : Db
 {
     public DbSet<Track> Tracks => Set<Track>();
     public DbSet<TrackConfig> TrackConfigs => Set<TrackConfig>();
+    public DbSet<CarDefinition> CarDefinitions => Set<CarDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

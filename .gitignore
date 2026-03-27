@@ -3,6 +3,8 @@
 [Oo]bj/
 **/[Bb]in/
 **/[Oo]bj/
+# Windows-style backslash bin\Debug dirs (literal backslash in name on macOS/Linux)
+**/bin\*/
 *.user
 *.suo
 *.cache
