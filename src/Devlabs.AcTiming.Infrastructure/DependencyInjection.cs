@@ -24,7 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ITimingDb, TimingDb>();
 
         services.Configure<AcServerOptions>(configuration.GetSection(AcServerOptions.SectionName));
-        services.AddSingleton<ICarBrandResolver, CarBrandResolver>();
+        services.AddSingleton<ICarCatalog, CarCatalog>();
         services.AddSingleton<ILiveTimingService, LiveTimingService>();
 
         services.AddSingleton<AcUdpEventSource>();

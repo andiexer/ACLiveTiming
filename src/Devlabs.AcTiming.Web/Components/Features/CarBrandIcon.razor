@@ -1,7 +1,8 @@
 @using Devlabs.AcTiming.Application.Cars
+@inject ICarCatalog CarCatalog
 
 @{
-    var car = Resolver.Resolve(Model);
+    var car = CarCatalog.Resolve(Model);
 }
 
 @if (car is not null)
@@ -9,11 +10,11 @@
     <span class="car-brand @(Large ? "brand-large" : "")" title="@Model">
         <img class="brand-icon"
              src="https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/@(car.Slug).png"
-             alt="@car.Model"
+             alt="@car.DisplayName"
              onerror="this.style.display='none'" />
         @if (ShowLabel)
         {
-            <span class="brand-label">@car</span>
+            <span class="brand-label">@car.DisplayName</span>
         }
     </span>
 }
@@ -24,7 +25,6 @@ else
 
 @code {
     [Parameter, EditorRequired] public string Model { get; set; } = "";
-    [Parameter, EditorRequired] public ICarBrandResolver Resolver { get; set; } = default!;
 
     /// <summary>When true, renders the raw model name alongside the icon (e.g. in the driver panel).</summary>
     [Parameter] public bool ShowLabel { get; set; }

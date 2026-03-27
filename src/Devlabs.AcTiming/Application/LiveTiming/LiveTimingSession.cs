@@ -9,6 +9,7 @@ public sealed class LiveTimingSession
     private const int MaxSamplesPerLap = 2000;
     private const float MinSplineStep = 0.002f;
     private const int MinSamplesForValidLap = 20;
+    private const int MaxFeedEvents = 200;
 
     private readonly ConcurrentDictionary<int, LiveDriver> _drivers = new();
     private readonly Lock _feedLock = new();
@@ -85,6 +86,16 @@ public sealed class LiveTimingSession
             return [.. _feedEvents];
     }
 
+    private void AddFeedEvent(SessionFeedEvent ev)
+    {
+        lock (_feedLock)
+        {
+            _feedEvents.Add(ev);
+            if (_feedEvents.Count > MaxFeedEvents)
+                _feedEvents.RemoveAt(0);
+        }
+    }
+
     public IReadOnlyList<BestLapTelemetry> GetBestLaps() => [.. _bestLaps.Values];
 
     private void HandleDriverConnected(SimEventDriverConnected ev)
@@ -100,8 +111,7 @@ public sealed class LiveTimingSession
         };
         _drivers[ev.CarId] = driver;
         _currentLapBuffers[ev.CarId] = [];
-        lock (_feedLock)
-            _feedEvents.Add(new DriverJoinedFeed(DateTime.UtcNow, ev.CarId, ev.DriverName));
+        AddFeedEvent(new DriverJoinedFeed(DateTime.UtcNow, ev.CarId, ev.DriverName));
     }
 
     private void HandleCarInfo(SimEventCarInfoReceived ev)
@@ -227,16 +237,15 @@ public sealed class LiveTimingSession
                 IsInOutLap = false,
             };
 
-            lock (_feedLock)
-                _feedEvents.Add(
-                    new LapCompletedFeed(
-                        DateTime.UtcNow,
-                        ev.CarId,
-                        driver.DriverName,
-                        ev.LapTimeMs,
-                        ev.Cuts == 0
-                    )
-                );
+            AddFeedEvent(
+                new LapCompletedFeed(
+                    DateTime.UtcNow,
+                    ev.CarId,
+                    driver.DriverName,
+                    ev.LapTimeMs,
+                    ev.Cuts == 0
+                )
+            );
         }
 
         // Update leaderboard positions from packet
@@ -276,17 +285,16 @@ public sealed class LiveTimingSession
                 ? od.DriverName
                 : null;
 
-        lock (_feedLock)
-            _feedEvents.Add(
-                new CollisionFeed(
-                    ev.OccurredAtUtc,
-                    ev.CarId,
-                    driverName,
-                    ev.OthercarId,
-                    otherDriverName,
-                    ev.ImpactSpeedKmh
-                )
-            );
+        AddFeedEvent(
+            new CollisionFeed(
+                ev.OccurredAtUtc,
+                ev.CarId,
+                driverName,
+                ev.OthercarId,
+                otherDriverName,
+                ev.ImpactSpeedKmh
+            )
+        );
     }
 
     private void IncrementIncident(int carId)
@@ -309,12 +317,7 @@ public sealed class LiveTimingSession
                 driver
             );
             if (ev.IsInPit)
-            {
-                lock (_feedLock)
-                    _feedEvents.Add(
-                        new DriverInPitFeed(DateTime.UtcNow, ev.CarId, driver.DriverName)
-                    );
-            }
+                AddFeedEvent(new DriverInPitFeed(DateTime.UtcNow, ev.CarId, driver.DriverName));
         }
     }
 
@@ -323,8 +326,7 @@ public sealed class LiveTimingSession
         if (_drivers.TryGetValue(ev.CarId, out var driver))
         {
             _drivers[ev.CarId] = driver with { IsConnected = false };
-            lock (_feedLock)
-                _feedEvents.Add(new DriverLeftFeed(DateTime.UtcNow, ev.CarId, driver.DriverName));
+            AddFeedEvent(new DriverLeftFeed(DateTime.UtcNow, ev.CarId, driver.DriverName));
         }
     }
 
@@ -335,16 +337,15 @@ public sealed class LiveTimingSession
             if (ev.SpeedInKmh > driver.MaxSpeedKmh)
             {
                 _drivers.TryUpdate(ev.CarId, driver with { MaxSpeedKmh = ev.SpeedInKmh }, driver);
-                lock (_feedLock)
-                    _feedEvents.Add(
-                        new DriverHitMaxSpeedFeed(
-                            DateTime.UtcNow,
-                            ev.CarId,
-                            driver.DriverName,
-                            ev.SpeedInKmh,
-                            ev.SpeedTrapName
-                        )
-                    );
+                AddFeedEvent(
+                    new DriverHitMaxSpeedFeed(
+                        DateTime.UtcNow,
+                        ev.CarId,
+                        driver.DriverName,
+                        ev.SpeedInKmh,
+                        ev.SpeedTrapName
+                    )
+                );
             }
         }
     }

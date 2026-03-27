@@ -45,6 +45,18 @@ body {
     line-height: 1.5;
 }
 
+/* ── Links ──────────────────────────────────────────────────────────────── */
+a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+a:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
 /* ── Shared component primitives ────────────────────────────────────────── */
 
 /* Lap time colour coding */
@@ -79,6 +91,125 @@ body {
     border-radius: 3px;
     margin-left: 0.35rem;
     vertical-align: middle;
+}
+
+/* ── Config pages ───────────────────────────────────────────────────────── */
+.config-page {
+    padding: 1.5rem 2rem;
+    max-width: 1100px;
+}
+
+.config-header h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.3rem;
+    color: var(--text-primary);
+}
+
+.config-subtitle {
+    margin: 0 0 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.loading-text {
+    color: var(--text-muted);
+}
+
+.error-text {
+    margin-top: 0.75rem;
+    color: var(--danger);
+    font-size: 0.85rem;
+}
+
+.car-table-wrapper {
+    overflow-x: auto;
+}
+
+.car-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.car-table th {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    background: var(--bg-table-header);
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+}
+
+.car-table td {
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.car-table tr:hover td { background: var(--bg-hover); }
+
+.car-table tr.row-dirty td { background: rgba(59, 130, 246, 0.07); }
+
+.cell-model {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.cell-slug { width: 140px; }
+
+.cell-preview { width: 56px; text-align: center; }
+
+.cell-actions { width: 70px; text-align: right; }
+
+.config-input {
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.83rem;
+    width: 100%;
+    min-width: 120px;
+    transition: border-color 0.15s;
+}
+
+.config-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.logo-preview {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.logo-missing {
+    color: var(--text-muted);
+}
+
+.btn-save {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.btn-save:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-disabled {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    cursor: default;
 }
 
 /* ── Blazor error boundaries ────────────────────────────────────────────── */

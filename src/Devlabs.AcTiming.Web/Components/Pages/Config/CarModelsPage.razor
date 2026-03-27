@@ -1,0 +1,172 @@
+@page "/config/car-models"
+@attribute [Authorize]
+@using Devlabs.AcTiming.Application.Cars
+@using Devlabs.AcTiming.Domain.Shared
+@using Devlabs.AcTiming.Infrastructure.Persistence
+@using Microsoft.EntityFrameworkCore
+@inject AcTimingDbContext Db
+@inject ICarCatalog CarCatalog
+
+<PageTitle>Car Models - AC Timing</PageTitle>
+
+<div class="config-page">
+    <div class="config-header">
+        <h2>Car Models</h2>
+        <p class="config-subtitle">Configure brand names and logos for discovered car models.</p>
+        <p class="config-subtitle">If you are unsure about the brand names, or the logo does not show up checkout the github repository with the logos: <a href="https://github.com/filippofilip95/car-logos-dataset/tree/master/logos/original">Logos CDN</a></p>
+    </div>
+
+    @if (_cars is null)
+    {
+        <p class="loading-text">Loading...</p>
+    }
+    else
+    {
+        <div class="car-table-wrapper">
+            <table class="car-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Brand</th>
+                        <th>Display Name</th>
+                        <th>Logo Slug</th>
+                        <th>Preview</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr class="@(row.IsDirty ? "row-dirty" : "")">
+                            <td class="cell-model">@row.Car.Model</td>
+                            <td>
+                                <input class="config-input"
+                                       value="@row.Brand"
+                                       @oninput="e => row.Brand = e.Value?.ToString()"
+                                       placeholder="e.g. Chevrolet" />
+                            </td>
+                            <td>
+                                <input class="config-input"
+                                       value="@row.DisplayName"
+                                       @oninput="e => row.DisplayName = e.Value?.ToString()"
+                                       placeholder="e.g. Corvette C7R" />
+                            </td>
+                            <td>
+                                <input class="config-input cell-slug"
+                                       value="@row.LogoSlug"
+                                       @oninput="e => row.LogoSlug = e.Value?.ToString()"
+                                       placeholder="auto from brand" />
+                            </td>
+                            <td class="cell-preview">
+                                @{
+                                    var slug = row.EffectiveSlug;
+                                }
+                                @if (slug is not null)
+                                {
+                                    <img class="logo-preview"
+                                         src="https://cdn.jsdelivr.net/gh/filippofilip95/car-logos-dataset@master/logos/thumb/@(slug).png"
+                                         alt="@slug"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" />
+                                    <span class="logo-missing" style="display:none">—</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="cell-actions">
+                                <button class="btn-save @(row.IsDirty ? "" : "btn-disabled")"
+                                        disabled="@(!row.IsDirty)"
+                                        @onclick="() => SaveRowAsync(row)">
+                                    Save
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_saveError is not null)
+        {
+            <p class="error-text">@_saveError</p>
+        }
+    }
+</div>
+
+@code {
+    private List<CarDefinition>? _cars;
+    private List<RowModel> _rows = [];
+    private string? _saveError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cars = await Db.CarDefinitions.AsNoTracking().OrderBy(c => c.Model).ToListAsync();
+        _rows = _cars.Select(c => new RowModel(c)).ToList();
+    }
+
+    private async Task SaveRowAsync(RowModel row)
+    {
+        _saveError = null;
+        try
+        {
+            var entity = await Db.CarDefinitions.FindAsync(row.Car.Id);
+            if (entity is null) return;
+
+            entity.Brand = string.IsNullOrWhiteSpace(row.Brand) ? null : row.Brand.Trim();
+            entity.DisplayName = string.IsNullOrWhiteSpace(row.DisplayName) ? null : row.DisplayName.Trim();
+            entity.LogoSlug = string.IsNullOrWhiteSpace(row.LogoSlug) ? null : row.LogoSlug.Trim();
+            entity.IsConfigured = entity.Brand != null && entity.DisplayName != null;
+
+            await Db.SaveChangesAsync();
+
+            row.Commit();
+            CarCatalog.Refresh();
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private sealed class RowModel
+    {
+        public CarDefinition Car { get; }
+
+        public string? Brand { get; set; }
+        public string? DisplayName { get; set; }
+        public string? LogoSlug { get; set; }
+
+        private string? _savedBrand;
+        private string? _savedDisplayName;
+        private string? _savedLogoSlug;
+
+        public bool IsDirty =>
+            Brand != _savedBrand ||
+            DisplayName != _savedDisplayName ||
+            LogoSlug != _savedLogoSlug;
+
+        public string? EffectiveSlug =>
+            string.IsNullOrWhiteSpace(LogoSlug)
+                ? Brand?.Trim().ToLower()
+                : LogoSlug.Trim();
+
+        public RowModel(CarDefinition car)
+        {
+            Car = car;
+            Brand = car.Brand;
+            DisplayName = car.DisplayName;
+            LogoSlug = car.LogoSlug;
+            _savedBrand = car.Brand;
+            _savedDisplayName = car.DisplayName;
+            _savedLogoSlug = car.LogoSlug;
+        }
+
+        public void Commit()
+        {
+            _savedBrand = Brand;
+            _savedDisplayName = DisplayName;
+            _savedLogoSlug = LogoSlug;
+        }
+    }
+}

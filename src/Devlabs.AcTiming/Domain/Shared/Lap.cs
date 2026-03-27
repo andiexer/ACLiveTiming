@@ -10,8 +10,8 @@ public class Lap
     public int DriverId { get; set; }
     public Driver Driver { get; set; } = null!;
 
-    public int CarId { get; set; }
-    public Car Car { get; set; } = null!;
+    public int CarDefinitionId { get; set; }
+    public CarDefinition CarDefinition { get; set; } = null!;
 
     public int TrackId { get; set; }
     public Track Track { get; set; } = null!;

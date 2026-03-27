@@ -1,13 +1,11 @@
 @page "/live-timing"
 @attribute [Authorize]
 @using Devlabs.AcTiming.Application.Abstractions
-@using Devlabs.AcTiming.Application.Cars
 @using Devlabs.AcTiming.Application.LiveTiming
 @using Devlabs.AcTiming.Domain.LiveTiming
 @using Devlabs.AcTiming.Web.LiveTiming
 @using Microsoft.EntityFrameworkCore
-@implements IAsyncDisposable
-@inject ICarBrandResolver CarBrandResolver
+@implements IDisposable
 @inject ITimingDb TimingDb
 @inject LiveTimingBroadcaster Broadcaster
 
@@ -232,7 +230,7 @@
                                         @driver.DriverName
                                     </td>
                                     <td class="car-name">
-                                        <CarBrandIcon Model="@driver.CarModel" Resolver="CarBrandResolver"/>
+                                        <CarBrandIcon Model="@driver.CarModel"/>
                                     </td>
                                     <td class="laptime">@FormatLapTime(driver.BestLapTimeMs)</td>
                                     <td class="laptime @GetLastLapColorClass(driver, overallBest) @(driver is { LastLapCuts: > 0, IsInPit: false, IsInOutLap: false } ? "lap-invalid" : "")">
@@ -322,7 +320,7 @@
                                 </div>
                             </div>
                             <div class="driver-panel-brand-badge">
-                                <CarBrandIcon Model="@sel.CarModel" Resolver="CarBrandResolver" ShowLabel Large/>
+                                <CarBrandIcon Model="@sel.CarModel" ShowLabel Large/>
                             </div>
                             <button class="close-btn" @onclick="ClearSelection" title="Close">✕</button>
                         </div>
@@ -412,8 +410,6 @@
     private List<LiveDriver> _leaderboard = [];
     private List<SessionFeedEvent> _feedEvents = [];
     private DateTime? _sessionStartedAt;
-    private PeriodicTimer? _tickTimer;
-    private CancellationTokenSource? _tickCts;
     private bool _showInterval;
 
     // ── POI overlays (loaded from DB when track changes) ──────────────────
@@ -477,7 +473,6 @@
             return Task.CompletedTask;
 
         Broadcaster.Subscribe(HandleSnapshotAsync);
-        StartTickTimer();
         return Task.CompletedTask;
     }
 
@@ -498,22 +493,6 @@
         }
 
         await InvokeAsync(StateHasChanged);
-    }
-
-    private void StartTickTimer()
-    {
-        _tickCts = new CancellationTokenSource();
-        _tickTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _ = TickLoopAsync(_tickCts.Token);
-    }
-
-    private async Task TickLoopAsync(CancellationToken ct)
-    {
-        while (await _tickTimer!.WaitForNextTickAsync(ct))
-        {
-            if (_session is not null && _sessionStartedAt is not null)
-                await InvokeAsync(StateHasChanged);
-        }
     }
 
     // ── POI overlay loading ────────────────────────────────────────────────
@@ -685,13 +664,6 @@
         return "";
     }
 
-    public ValueTask DisposeAsync()
-    {
-        Broadcaster.Unsubscribe(HandleSnapshotAsync);
-        _tickCts?.Cancel();
-        _tickTimer?.Dispose();
-        _tickCts?.Dispose();
-        return ValueTask.CompletedTask;
-    }
+    public void Dispose() => Broadcaster.Unsubscribe(HandleSnapshotAsync);
 
 }
